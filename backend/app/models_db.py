@@ -15,7 +15,6 @@ from datetime import datetime
 from .db import Base
 
 
-
 # =========================
 # Dictionary
 # =========================
@@ -68,8 +67,6 @@ class DictionaryEntryDB(Base):
     examples = Column(
         Text
     )
-
-
 
 
 
@@ -135,8 +132,6 @@ class ReadingDB(Base):
 
 
 
-
-
 # =========================
 # Reading Sentences
 # =========================
@@ -194,8 +189,6 @@ class ReadingSentenceDB(Base):
 
 
 
-
-
 # =========================
 # Reading Words
 # =========================
@@ -245,8 +238,6 @@ class ReadingWordDB(Base):
 
 
 
-
-
 # =========================
 # Workspace
 # =========================
@@ -278,8 +269,6 @@ class WorkspaceDB(Base):
         "VocabularyDB",
         back_populates="workspace"
     )
-
-
 
 
 
@@ -352,8 +341,6 @@ class VocabularyDB(Base):
 
 
 
-
-
 # =========================
 # Flashcards
 # =========================
@@ -398,8 +385,6 @@ class FlashcardDB(Base):
     vocabulary = relationship(
         "VocabularyDB"
     )
-
-
 
 
 

@@ -1,270 +1,133 @@
-import nltk
-from nltk.corpus import wordnet
-from wordfreq import zipf_frequency
-import eng_to_ipa as ipa
+import json
+from typing import Optional, List
 
 
-# =========================
-# POS mapping
-# =========================
-
-WORDNET_POS_MAP = {
-
-    "n": "noun",
-
-    "v": "verb",
-
-    "a": "adjective",
-
-    "r": "adverb"
-
-}
+from nltk.corpus import wordnet as wn
 
 
-
-# =========================
-# CEFR estimation
-# =========================
-
-def estimate_cefr(word: str):
-
-    """
-    Estimate CEFR level using word frequency.
-
-    Higher zipf frequency:
-    easier word.
-    """
-
-
-    freq = zipf_frequency(
-        word,
-        "en"
-    )
-
-
-    if freq >= 6:
-
-        return "A1"
-
-
-    elif freq >= 5:
-
-        return "A2"
-
-
-    elif freq >= 4:
-
-        return "B1"
-
-
-    elif freq >= 3:
-
-        return "B2"
-
-
-    elif freq >= 2:
-
-        return "C1"
-
-
-    else:
-
-        return "C2"
+from ..db import SessionLocal
+from ..models_db import DictionaryEntryDB
 
 
 
 
 
 # =========================
-# Lemma
+# Parse examples
 # =========================
 
-def get_lemma(
-    word: str
+def _parse_examples(
+    examples
 ):
 
+    if not examples:
 
-    synsets = wordnet.synsets(
-        word
-    )
-
-
-    if not synsets:
-
-        return word
+        return []
 
 
+    if isinstance(
+        examples,
+        list
+    ):
 
-    lemma = synsets[0].lemmas()[0].name()
-
-
-    return lemma.replace(
-        "_",
-        " "
-    )
+        return examples
 
 
+    try:
+
+        return json.loads(
+            examples
+        )
 
 
-
-# =========================
-# POS
-# =========================
-
-def get_pos(
-    word: str
-):
-
-
-    synsets = wordnet.synsets(
-        word
-    )
-
-
-    if not synsets:
-
-        return None
-
-
-
-    pos = synsets[0].pos()
-
-
-    return WORDNET_POS_MAP.get(
-        pos
-    )
-
-
-
-
-
-# =========================
-# Definition
-# =========================
-
-def get_definition(
-    word: str
-):
-
-
-    synsets = wordnet.synsets(
-        word
-    )
-
-
-    if not synsets:
-
-        return None
-
-
-
-    return synsets[0].definition()
-
-
-
-
-
-# =========================
-# Examples
-# =========================
-
-def get_examples(
-    word: str
-):
-
-
-    synsets = wordnet.synsets(
-        word
-    )
-
-
-    if not synsets:
+    except Exception:
 
         return []
 
 
 
-    return synsets[0].examples()
+
+
+# =========================
+# Select WordNet meaning
+# =========================
+
+def _select_wordnet_synset(
+    word
+):
+
+    synsets = wn.synsets(
+        word
+    )
+
+
+    if not synsets:
+
+        return None
+
+
+
+    priority = [
+
+        wn.ADJ,
+
+        wn.NOUN,
+
+        wn.VERB,
+
+        wn.ADV
+
+    ]
+
+
+
+    for pos in priority:
+
+        for synset in synsets:
+
+            if synset.pos() == pos:
+
+                return synset
+
+
+
+    return synsets[0]
 
 
 
 
 
 # =========================
-# IPA
+# WordNet fallback
 # =========================
 
-def get_ipa(
-    word: str
+def _wordnet_lookup(
+    word
 ):
 
 
-    try:
-
-        result = ipa.convert(
-            word
-        )
-
-
-        if result:
-
-            return result
-
-
-
-    except Exception:
-
-        pass
-
-
-
-    return None
-
-
-
-
-
-# =========================
-# Main lookup
-# =========================
-
-def lookup_word(
-    word: str
-):
-
-
-    word = word.lower().strip()
-
-
-
-    lemma = get_lemma(
+    synset = _select_wordnet_synset(
         word
     )
 
 
-    definition = get_definition(
-        word
-    )
+    if not synset:
+
+        return None
 
 
-    pos = get_pos(
-        word
-    )
 
+    pos_map = {
 
-    examples = get_examples(
-        word
-    )
+        "n": "noun",
 
+        "v": "verb",
 
-    pronunciation = get_ipa(
-        word
-    )
+        "a": "adjective",
 
+        "r": "adverb"
 
-    cefr = estimate_cefr(
-        word
-    )
+    }
 
 
 
@@ -272,16 +135,178 @@ def lookup_word(
 
         "word": word,
 
-        "lemma": lemma,
+        "lemma":
+            synset.lemmas()[0]
+            .name()
+            .replace("_", " "),
 
-        "definition": definition,
 
-        "pos": pos,
+        "definition":
+            synset.definition(),
 
-        "cefr": cefr,
 
-        "ipa": pronunciation,
+        "pos":
+            pos_map.get(
+                synset.pos(),
+                ""
+            ),
 
-        "examples": examples
+
+        "cefr":
+            None,
+
+
+        "ipa":
+            None,
+
+
+        "examples":
+            synset.examples()
 
     }
+
+
+
+
+
+# =========================
+# Single word lookup
+# =========================
+
+def lookup_word(
+    word: str
+) -> Optional[dict]:
+
+
+    word = word.strip().lower()
+
+
+    session = SessionLocal()
+
+
+    try:
+
+
+        entry = session.query(
+            DictionaryEntryDB
+        ).filter(
+            DictionaryEntryDB.word.ilike(word)
+        ).first()
+
+
+
+        if entry:
+
+
+            return {
+
+                "word":
+                    entry.word,
+
+                "lemma":
+                    entry.lemma,
+
+                "definition":
+                    entry.definition,
+
+                "pos":
+                    entry.pos,
+
+                "cefr":
+                    entry.cefr,
+
+                "ipa":
+                    entry.ipa,
+
+                "examples":
+                    _parse_examples(
+                        entry.examples
+                    )
+
+            }
+
+
+
+        result = _wordnet_lookup(
+            word
+        )
+
+
+        if not result:
+
+            return None
+
+
+
+        new_entry = DictionaryEntryDB(
+
+            word=result["word"],
+
+            lemma=result["lemma"],
+
+            definition=result["definition"],
+
+            pos=result["pos"],
+
+            cefr=result["cefr"],
+
+            ipa=result["ipa"],
+
+            examples=json.dumps(
+                result["examples"],
+                ensure_ascii=False
+            )
+
+        )
+
+
+        session.add(
+            new_entry
+        )
+
+        session.commit()
+
+
+
+        return result
+
+
+
+    finally:
+
+        session.close()
+
+
+
+
+
+# =========================
+# Multiple word lookup
+# =========================
+
+def lookup_words(
+    words: List[str]
+):
+
+    """
+    Batch dictionary lookup.
+    """
+
+    result = {}
+
+
+
+    for word in words:
+
+        data = lookup_word(
+            word
+        )
+
+
+        if data:
+
+            result[word] = data
+
+
+
+    return result

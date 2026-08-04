@@ -1,28 +1,27 @@
 from fastapi import APIRouter, HTTPException
 
-from ..services.dictionary_service import lookup_word
-
+from ..services.dictionary_service import (
+    lookup_word
+)
 
 
 router = APIRouter()
 
 
 
+# =========================
+# Get dictionary entry
+# =========================
 
 @router.get("/{word}")
-def get_dictionary(
+def get_dictionary_word(
     word: str
 ):
-
-    """
-    Lookup dictionary entry.
-    """
 
 
     result = lookup_word(
         word
     )
-
 
 
     if not result:
@@ -34,7 +33,6 @@ def get_dictionary(
             detail="Word not found"
 
         )
-
 
 
     return result

@@ -1,32 +1,59 @@
-import re
+import spacy
 
 
-def tokenize_sentence(sentence: str):
-    """
-    Split sentence into words.
+# =========================
+# Load spaCy model
+# =========================
 
-    Example:
-    "AI is changing the world."
-    =>
-    ["AI", "is", "changing", "the", "world"]
-    """
-
-
-    words = re.findall(
-        r"\b[a-zA-Z]+(?:'[a-zA-Z]+)?\b",
-        sentence
-    )
-
-
-    return words
+nlp = spacy.load(
+    "en_core_web_sm"
+)
 
 
 
+# =========================
+# Tokenize sentence
+# =========================
+
+def tokenize_sentence(
+    sentence: str
+):
+
+    doc = nlp(sentence)
 
 
-def normalize_word(word: str):
-    """
-    Normalize word for dictionary lookup.
-    """
+    tokens = []
 
-    return word.lower()
+
+    for token in doc:
+
+        # ignore punctuation
+        if not token.is_punct:
+
+            tokens.append(
+                token.text
+            )
+
+
+    return tokens
+
+
+
+
+
+# =========================
+# Normalize word
+# =========================
+
+def normalize_word(
+    word: str
+):
+
+    doc = nlp(word)
+
+
+    if len(doc) == 0:
+        return word.lower()
+
+
+    return doc[0].lemma_.lower()

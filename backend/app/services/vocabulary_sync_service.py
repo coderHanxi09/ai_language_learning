@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from ..db import SessionLocal
 from ..models_db import DictionaryEntryDB
@@ -7,43 +7,71 @@ from .dictionary_service import lookup_word
 
 
 
+# =========================
+# Sync vocabulary
+# =========================
 
 def sync_vocabulary_to_dictionary(
-    vocabulary: list[str]
+    words: list[str]
 ):
-
-    """
-    Sync generated reading vocabulary
-    into dictionary_entries table.
-    """
 
     session = SessionLocal()
 
 
     try:
 
-        for word in vocabulary:
+        for raw_word in words:
 
 
-            # avoid duplicate
+            if not raw_word:
+                continue
+
+
+            word = raw_word.lower().strip()
+
+
+
+            if not word:
+                continue
+
+
+
+            # =========================
+            # Check existing word
+            # case insensitive
+            # =========================
 
             exists = session.query(
                 DictionaryEntryDB
             ).filter(
-                DictionaryEntryDB.word == word.lower()
+                func.lower(
+                    DictionaryEntryDB.word
+                )
+                ==
+                word
             ).first()
 
 
+
             if exists:
+
+                print(
+                    "[DICT] exists:",
+                    word
+                )
 
                 continue
 
 
 
-            print(
-                f"[DICT] Looking up {word}"
-            )
+            # =========================
+            # Lookup dictionary
+            # =========================
 
+            print(
+                "[DICT] Looking up:",
+                word
+            )
 
 
             data = lookup_word(
@@ -55,45 +83,69 @@ def sync_vocabulary_to_dictionary(
             if not data:
 
                 print(
-                    f"[DICT] No result for {word}"
+                    "[DICT] No result:",
+                    word
                 )
 
                 continue
 
 
 
+            # =========================
+            # Double check before insert
+            # =========================
+
+            duplicate = session.query(
+                DictionaryEntryDB
+            ).filter(
+                func.lower(
+                    DictionaryEntryDB.word
+                )
+                ==
+                word
+            ).first()
+
+
+
+            if duplicate:
+
+                print(
+                    "[DICT] duplicate skipped:",
+                    word
+                )
+
+                continue
+
+
+
+            # =========================
+            # Create entry
+            # =========================
+
             entry = DictionaryEntryDB(
 
-                word=data.get(
-                    "word",
-                    word.lower()
-                ),
-
+                word=word,
 
                 lemma=data.get(
-                    "lemma"
+                    "lemma",
+                    word
                 ),
-
 
                 definition=data.get(
                     "definition"
                 ),
 
-
                 pos=data.get(
                     "pos"
                 ),
-
 
                 cefr=data.get(
                     "cefr"
                 ),
 
-
                 ipa=data.get(
                     "ipa"
                 ),
-
 
                 examples=str(
                     data.get(
@@ -110,26 +162,33 @@ def sync_vocabulary_to_dictionary(
             )
 
 
+            # Important:
+            # write immediately so following
+            # duplicate words are detected
+
+            session.flush()
+
+
+
+            print(
+                "[DICT] inserted:",
+                word
+            )
+
+
 
         session.commit()
-
-
-        print(
-            "[DICT] Vocabulary sync finished"
-        )
 
 
 
     except Exception as e:
 
+        session.rollback()
 
         print(
-            "[DICT ERROR]",
+            "[DICT SYNC ERROR]",
             e
         )
-
-
-        session.rollback()
 
         raise
 
