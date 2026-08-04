@@ -3,6 +3,7 @@ from pydantic import BaseModel
 
 from ..services.ai_service import generate_reading
 from ..services.sentence_service import split_sentences
+from ..services.translation_service import translate_sentences
 from ..services.vocabulary_sync_service import (
     sync_vocabulary_to_dictionary
 )
@@ -34,8 +35,6 @@ class ReadingRequest(BaseModel):
 
 
 
-
-
 # =========================
 # Create initial reading
 # =========================
@@ -46,7 +45,13 @@ def _create_initial_reading(
 
     session = SessionLocal()
 
+
     try:
+
+        print(
+            "[DB] Creating initial reading"
+        )
+
 
         reading = ReadingDB(
 
@@ -85,6 +90,7 @@ def _create_initial_reading(
         return reading.id
 
 
+
     finally:
 
         session.close()
@@ -94,7 +100,7 @@ def _create_initial_reading(
 
 
 # =========================
-# Save sentences
+# Save sentences + translation
 # =========================
 
 def _save_sentences(
@@ -109,23 +115,30 @@ def _save_sentences(
     )
 
 
-    # avoid duplicate sentences
-
-    old = session.query(
-        ReadingSentenceDB
-    ).filter(
-        ReadingSentenceDB.reading_id == reading_id
-    ).all()
-
-
-    for item in old:
-
-        session.delete(item)
-
-
     sentences = split_sentences(
         content
     )
+
+
+    print(
+        f"[Sentence] Found {len(sentences)} sentences"
+    )
+
+
+    translations = translate_sentences(
+        sentences
+    )
+
+
+    translation_map = {}
+
+
+    for item in translations:
+
+        translation_map[
+            item["sentence_order"]
+        ] = item["translation"]
+
 
 
     for index, sentence in enumerate(
@@ -133,20 +146,26 @@ def _save_sentences(
     ):
 
 
-        sentence_obj = ReadingSentenceDB(
+        order = index + 1
+
+
+        obj = ReadingSentenceDB(
 
             reading_id=reading_id,
 
-            sentence_order=index + 1,
+            sentence_order=order,
 
             original=sentence,
 
-            translation=None
+            translation=
+                translation_map.get(
+                    order
+                )
 
         )
 
 
-        session.add(sentence_obj)
+        session.add(obj)
 
 
 
@@ -163,8 +182,8 @@ def _save_sentences(
 # =========================
 
 def _update_reading_success(
-    reading_id:int,
-    data:dict
+    reading_id: int,
+    data: dict
 ):
 
 
@@ -210,7 +229,8 @@ def _update_reading_success(
 
 
         reading.vocabulary = json.dumps(
-            vocabulary
+            vocabulary,
+            ensure_ascii=False
         )
 
 
@@ -218,29 +238,19 @@ def _update_reading_success(
 
 
 
-        # -------------------------
+        # =====================
         # Dictionary sync
-        # -------------------------
+        # =====================
 
-        try:
-
-            sync_vocabulary_to_dictionary(
-                vocabulary
-            )
-
-
-        except Exception as e:
-
-            print(
-                "[DICT ERROR]",
-                e
-            )
+        sync_vocabulary_to_dictionary(
+            vocabulary
+        )
 
 
 
-        # -------------------------
-        # Sentence creation
-        # -------------------------
+        # =====================
+        # Sentence storage
+        # =====================
 
         _save_sentences(
 
@@ -256,12 +266,14 @@ def _update_reading_success(
         )
 
 
+
         session.commit()
 
 
         print(
             "[DB] Reading completed"
         )
+
 
 
     except Exception as e:
@@ -288,11 +300,11 @@ def _update_reading_success(
 
 
 # =========================
-# Failed
+# Update failed
 # =========================
 
 def _update_reading_failed(
-    reading_id:int
+    reading_id: int
 ):
 
 
@@ -312,7 +324,7 @@ def _update_reading_failed(
 
         if reading:
 
-            reading.status="failed"
+            reading.status = "failed"
 
             session.commit()
 
@@ -327,24 +339,22 @@ def _update_reading_failed(
 
 
 # =========================
-# Create API
+# Create Reading
 # =========================
 
 @router.post("/readings")
 def create_reading(
-    req:ReadingRequest,
-    background_tasks:BackgroundTasks
+    req: ReadingRequest,
+    background_tasks: BackgroundTasks
 ):
 
 
-    payload=req.model_dump()
+    payload = req.model_dump()
 
 
-
-    reading_id=_create_initial_reading(
+    reading_id = _create_initial_reading(
         payload
     )
-
 
 
     background_tasks.add_task(
@@ -358,12 +368,14 @@ def create_reading(
     )
 
 
-
     return {
 
-        "id":reading_id,
+        "id": reading_id,
 
-        "status":"generating"
+        "status": "generating",
+
+        "message":
+            "Reading generation started"
 
     }
 
@@ -372,28 +384,32 @@ def create_reading(
 
 
 # =========================
-# Background
+# Background task
 # =========================
 
 def _background_generate_and_update(
-    reading_id:int,
-    payload:dict
+    reading_id: int,
+    payload: dict
 ):
+
+
+    print(
+        "[TASK] Started"
+    )
 
 
     try:
 
 
-        print(
-            "[AI] Generating reading..."
-        )
+        reading = generate_reading(
 
+            payload.get(
+                "topic"
+            ),
 
-        result = generate_reading(
-
-            payload["topic"],
-
-            payload["difficulty"],
+            payload.get(
+                "difficulty"
+            ),
 
             payload.get(
                 "known_vocabulary",
@@ -403,13 +419,19 @@ def _background_generate_and_update(
         )
 
 
+        print(
+            "[AI] Generation finished"
+        )
+
+
         _update_reading_success(
 
             reading_id,
 
-            result
+            reading
 
         )
+
 
 
     except Exception as e:
@@ -430,27 +452,29 @@ def _background_generate_and_update(
 
 
 # =========================
-# List readings
+# Get all readings
 # =========================
 
 @router.get("/readings")
 def get_readings():
 
 
-    session=SessionLocal()
+    session = SessionLocal()
 
 
     try:
 
 
-        readings=session.query(
+        readings = session.query(
             ReadingDB
         ).order_by(
             ReadingDB.id.desc()
         ).all()
 
 
-        result=[]
+
+        result = []
+
 
 
         for reading in readings:
@@ -458,19 +482,26 @@ def get_readings():
 
             result.append({
 
-                "id":reading.id,
+                "id": reading.id,
 
-                "title":reading.title,
+                "title": reading.title,
 
-                "topic":reading.topic,
+                "topic": reading.topic,
 
-                "difficulty":reading.difficulty,
+                "difficulty": reading.difficulty,
 
-                "status":reading.status,
+                "status": reading.status,
 
-                "created_at":reading.created_at
+                "content": reading.content,
+
+                "vocabulary": json.loads(
+                    reading.vocabulary or "[]"
+                ),
+
+                "created_at": reading.created_at
 
             })
+
 
 
         return result
@@ -486,25 +517,25 @@ def get_readings():
 
 
 # =========================
-# Single reading
+# Get one reading
 # =========================
 
 @router.get("/readings/{reading_id}")
 def get_reading(
-    reading_id:int
+    reading_id: int
 ):
 
 
-    session=SessionLocal()
+    session = SessionLocal()
 
 
     try:
 
 
-        reading=session.query(
+        reading = session.query(
             ReadingDB
         ).filter(
-            ReadingDB.id==reading_id
+            ReadingDB.id == reading_id
         ).first()
 
 
@@ -522,7 +553,7 @@ def get_reading(
 
 
 
-        sentences=[]
+        sentences = []
 
 
         for sentence in reading.sentences:
@@ -530,13 +561,14 @@ def get_reading(
 
             sentences.append({
 
-                "id":sentence.id,
+                "sentence_order":
+                    sentence.sentence_order,
 
-                "sentence_order":sentence.sentence_order,
+                "original":
+                    sentence.original,
 
-                "original":sentence.original,
-
-                "translation":sentence.translation
+                "translation":
+                    sentence.translation
 
             })
 
@@ -545,25 +577,23 @@ def get_reading(
         return {
 
 
-            "id":reading.id,
+            "id": reading.id,
 
-            "title":reading.title,
+            "title": reading.title,
 
-            "topic":reading.topic,
+            "topic": reading.topic,
 
-            "difficulty":reading.difficulty,
+            "difficulty": reading.difficulty,
 
-            "status":reading.status,
+            "status": reading.status,
 
-            "content":reading.content,
+            "content": reading.content,
 
-
-            "vocabulary":json.loads(
+            "vocabulary": json.loads(
                 reading.vocabulary or "[]"
             ),
 
-
-            "sentences":sentences
+            "sentences": sentences
 
         }
 
