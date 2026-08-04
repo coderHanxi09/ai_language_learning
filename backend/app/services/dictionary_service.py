@@ -1,57 +1,300 @@
-from typing import Optional
+from pathlib import Path
 import json
+
 from ..db import SessionLocal
 from ..models_db import DictionaryEntryDB
 
 
-_MOCK_DB = {
-    "serendipity": {
-        "lemma": "serendipity",
-        "definition": "the occurrence of events by chance in a happy or beneficial way",
-        "pos": "noun",
-        "cefr": "C1",
-        "ipa": "/ˌsɛrənˈdɪpɪti/",
-        "examples": ["Finding the manuscript was pure serendipity."],
-    },
-    "apple": {
-        "lemma": "apple",
-        "definition": "a round fruit with red or green skin",
-        "pos": "noun",
-        "cefr": "A1",
-        "ipa": "/ˈæpəl/",
-        "examples": ["She ate an apple for breakfast."],
-    },
-}
+# =========================
+# Dictionary file location
+# =========================
+
+BASE_DIR = Path(__file__).resolve().parents[2]
 
 
-def _row_to_entry(row: DictionaryEntryDB) -> dict:
-    if row is None:
-        return None
-    examples = []
-    try:
-        examples = json.loads(row.examples) if row.examples else []
-    except Exception:
-        examples = row.examples.split("\n") if row.examples else []
-    return {
-        "lemma": row.lemma or row.word,
-        "definition": row.definition,
-        "pos": row.pos,
-        "cefr": row.cefr,
-        "ipa": row.ipa,
-        "examples": examples,
-    }
+DICTIONARY_FILE = (
+    BASE_DIR /
+    "data" /
+    "dictionary" /
+    "test.jsonl"
+)
 
 
-def lookup_word(word: str) -> Optional[dict]:
-    # Try DB first
+
+# =========================
+# Public API
+# =========================
+
+def lookup_word(word: str):
+
+    """
+    Lookup word.
+
+    Priority:
+    1. SQLite cache
+    2. Local JSONL dictionary
+    3. Save result to SQLite
+    """
+
+
+    word = word.lower().strip()
+
+
     session = SessionLocal()
+
+
     try:
-        row = session.query(DictionaryEntryDB).filter(DictionaryEntryDB.word == word.lower()).first()
-        if row:
-            return _row_to_entry(row)
+
+        # =========================
+        # 1. Search database cache
+        # =========================
+
+        existing = session.query(
+            DictionaryEntryDB
+        ).filter(
+            DictionaryEntryDB.word == word
+        ).first()
+
+
+
+        if existing:
+
+
+            return {
+
+                "word": existing.word,
+
+                "lemma": existing.lemma,
+
+                "definition": existing.definition,
+
+                "pos": existing.pos,
+
+                "cefr": existing.cefr,
+
+                "ipa": existing.ipa,
+
+                "examples": (
+                    json.loads(
+                        existing.examples
+                    )
+                    if existing.examples
+                    else []
+                )
+
+            }
+
+
+
+
+        # =========================
+        # 2. Search JSONL
+        # =========================
+
+        result = search_json_dictionary(
+            word
+        )
+
+
+
+        if not result:
+
+            return None
+
+
+
+
+        # =========================
+        # 3. Save cache
+        # =========================
+
+        entry = DictionaryEntryDB(
+
+            word=result["word"],
+
+            lemma=result.get(
+                "lemma"
+            ),
+
+            definition=result.get(
+                "definition"
+            ),
+
+            pos=result.get(
+                "pos"
+            ),
+
+            cefr=result.get(
+                "cefr"
+            ),
+
+            ipa=result.get(
+                "ipa"
+            ),
+
+            examples=json.dumps(
+                result.get(
+                    "examples",
+                    []
+                )
+            )
+
+        )
+
+
+
+        session.add(entry)
+
+        session.commit()
+
+
+
+        return result
+
+
+
+
     finally:
+
         session.close()
 
-    # Fallback to mock
-    return _MOCK_DB.get(word.lower())
 
+
+
+
+
+
+# =========================
+# JSONL search
+# =========================
+
+def search_json_dictionary(
+    word: str
+):
+
+
+    if not DICTIONARY_FILE.exists():
+
+        print(
+            "[Dictionary] File not found:",
+            DICTIONARY_FILE
+        )
+
+        return None
+
+
+
+
+    with open(
+        DICTIONARY_FILE,
+        "r",
+        encoding="utf-8"
+    ) as file:
+
+
+
+        for line in file:
+
+
+            if not line.strip():
+
+                continue
+
+
+
+            data = json.loads(
+                line
+            )
+
+
+
+            if data.get(
+                "word"
+            ) != word:
+
+
+                continue
+
+
+
+
+            senses = data.get(
+                "senses",
+                []
+            )
+
+
+
+            definition = None
+
+
+
+            if senses:
+
+
+                glosses = senses[0].get(
+                    "glosses",
+                    []
+                )
+
+
+                if glosses:
+
+                    definition = glosses[0]
+
+
+
+
+            sounds = data.get(
+                "sounds",
+                []
+            )
+
+
+
+            ipa = None
+
+
+            if sounds:
+
+                ipa = sounds[0].get(
+                    "ipa"
+                )
+
+
+
+
+            return {
+
+
+                "word": word,
+
+
+                "lemma": data.get(
+                    "word"
+                ),
+
+
+                "definition": definition,
+
+
+                "pos": data.get(
+                    "pos"
+                ),
+
+
+                "cefr": data.get(
+                    "cefr"
+                ),
+
+
+                "ipa": ipa,
+
+
+                "examples": []
+
+            }
+
+
+
+    return None

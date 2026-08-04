@@ -22,3 +22,5 @@ requests==2.32.3
 
 # Google Gemini
 google-genai==1.29.0
+
+orjson==3.11.2
