@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from ..services.dictionary_service import (
     lookup_word
@@ -19,20 +19,37 @@ def get_dictionary_word(
 ):
 
 
+    normalized_word = word.lower().strip()
+
+
+
     result = lookup_word(
-        word
+        normalized_word
     )
+
 
 
     if not result:
 
-        raise HTTPException(
 
-            status_code=404,
+        return {
 
-            detail="Word not found"
+            "word": normalized_word,
 
-        )
+            "found": False,
+
+            "message": "Word not found"
+
+        }
 
 
-    return result
+
+    return {
+
+        "word": normalized_word,
+
+        "found": True,
+
+        "data": result
+
+    }

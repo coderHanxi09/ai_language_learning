@@ -15,6 +15,7 @@ from datetime import datetime
 from .db import Base
 
 
+
 # =========================
 # Dictionary
 # =========================
@@ -67,6 +68,7 @@ class DictionaryEntryDB(Base):
     examples = Column(
         Text
     )
+
 
 
 
@@ -131,9 +133,17 @@ class ReadingDB(Base):
     )
 
 
+    # 用户从这篇文章收藏的词
+    vocabulary_items = relationship(
+        "VocabularyDB",
+        back_populates="reading"
+    )
+
+
+
 
 # =========================
-# Reading Sentences
+# Reading Sentence
 # =========================
 
 class ReadingSentenceDB(Base):
@@ -170,8 +180,7 @@ class ReadingSentenceDB(Base):
 
 
     translation = Column(
-        Text,
-        nullable=True
+        Text
     )
 
 
@@ -186,6 +195,7 @@ class ReadingSentenceDB(Base):
         back_populates="sentence",
         cascade="all, delete-orphan"
     )
+
 
 
 
@@ -221,7 +231,8 @@ class ReadingWordDB(Base):
 
 
     lemma = Column(
-        String(128)
+        String(128),
+        index=True
     )
 
 
@@ -235,6 +246,7 @@ class ReadingWordDB(Base):
         "ReadingSentenceDB",
         back_populates="words"
     )
+
 
 
 
@@ -272,8 +284,9 @@ class WorkspaceDB(Base):
 
 
 
+
 # =========================
-# Vocabulary
+# User Vocabulary
 # =========================
 
 class VocabularyDB(Base):
@@ -296,7 +309,8 @@ class VocabularyDB(Base):
 
 
     lemma = Column(
-        String(128)
+        String(128),
+        index=True
     )
 
 
@@ -316,6 +330,24 @@ class VocabularyDB(Base):
     )
 
 
+    # 来源
+    # manual / reading / ai
+    source = Column(
+        String(32),
+        default="manual"
+    )
+
+
+    # 来自哪篇阅读
+    reading_id = Column(
+        Integer,
+        ForeignKey(
+            "readings.id"
+        ),
+        nullable=True
+    )
+
+
     workspace_id = Column(
         Integer,
         ForeignKey(
@@ -331,13 +363,29 @@ class VocabularyDB(Base):
     )
 
 
+    reading = relationship(
+        "ReadingDB",
+        back_populates="vocabulary_items"
+    )
+
+
+    flashcards = relationship(
+        "FlashcardDB",
+        back_populates="vocabulary",
+        cascade="all, delete-orphan"
+    )
+
+
     __table_args__ = (
+
         Index(
             "ix_vocabulary_word_workspace",
             "word",
             "workspace_id"
         ),
+
     )
+
 
 
 
@@ -383,8 +431,10 @@ class FlashcardDB(Base):
 
 
     vocabulary = relationship(
-        "VocabularyDB"
+        "VocabularyDB",
+        back_populates="flashcards"
     )
+
 
 
 

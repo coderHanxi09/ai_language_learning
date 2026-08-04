@@ -2,7 +2,6 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel, Field
 
 import json
-import traceback
 
 
 from ..services.ai_service import generate_reading
@@ -13,10 +12,6 @@ from ..services.sentence_service import (
 
 from ..services.translation_service import (
     translate_sentences
-)
-
-from ..services.vocabulary_sync_service import (
-    sync_vocabulary_to_dictionary
 )
 
 from ..services.dictionary_service import (
@@ -40,13 +35,14 @@ from ..models_db import (
 router = APIRouter()
 
 
+
 # =========================
 # Request Model
 # =========================
 
 class ReadingRequest(BaseModel):
 
-    topic: str
+    content: str
 
     difficulty: str = "B2"
 
@@ -55,8 +51,9 @@ class ReadingRequest(BaseModel):
     )
 
 
+
 # =========================
-# Create initial reading
+# Create Reading
 # =========================
 
 def _create_initial_reading(
@@ -71,9 +68,7 @@ def _create_initial_reading(
 
             title="Generating...",
 
-            topic=payload.get(
-                "topic"
-            ),
+            topic="Imported Text",
 
             difficulty=payload.get(
                 "difficulty",
@@ -82,9 +77,7 @@ def _create_initial_reading(
 
             content="",
 
-            vocabulary=json.dumps(
-                []
-            ),
+            vocabulary=json.dumps([]),
 
             status="generating"
 
@@ -151,16 +144,13 @@ def _save_sentences(
 
             original=sentence,
 
-            translation=translation_map.get(
-                order
-            )
+            translation=
+                translation_map.get(order)
 
         )
 
 
-        session.add(
-            sentence_obj
-        )
+        session.add(sentence_obj)
 
         session.flush()
 
@@ -172,6 +162,7 @@ def _save_sentences(
 
 
         for position, token in enumerate(tokens):
+
 
             word_obj = ReadingWordDB(
 
@@ -188,9 +179,8 @@ def _save_sentences(
             )
 
 
-            session.add(
-                word_obj
-            )
+            session.add(word_obj)
+
 
 
     print(
@@ -210,7 +200,9 @@ def _update_reading_success(
 
     session = SessionLocal()
 
+
     try:
+
 
         reading = session.query(
             ReadingDB
@@ -219,13 +211,16 @@ def _update_reading_success(
         ).first()
 
 
+
         if not reading:
+
             return
+
 
 
         reading.title = data.get(
             "title",
-            "Untitled"
+            "Reading"
         )
 
 
@@ -251,14 +246,12 @@ def _update_reading_success(
 
 
 
-        sync_vocabulary_to_dictionary(
-
-            data.get(
-                "vocabulary",
-                []
-            )
-
-        )
+        # =========================
+        # Important:
+        # Do NOT sync dictionary here
+        #
+        # User clicks word -> lookup
+        # =========================
 
 
 
@@ -284,6 +277,13 @@ def _update_reading_success(
         )
 
 
+    except Exception as e:
+
+        session.rollback()
+
+        raise e
+
+
     finally:
 
         session.close()
@@ -295,7 +295,7 @@ def _update_reading_success(
 # =========================
 
 def _update_reading_failed(
-    reading_id: int
+    reading_id:int
 ):
 
     session = SessionLocal()
@@ -311,7 +311,7 @@ def _update_reading_failed(
 
         if reading:
 
-            reading.status = "failed"
+            reading.status="failed"
 
             session.commit()
 
@@ -333,6 +333,7 @@ def _background_generate_and_update(
 
     try:
 
+
         print(
             "[READING] generating:",
             payload
@@ -341,21 +342,18 @@ def _background_generate_and_update(
 
         result = generate_reading(
 
-            payload["topic"],
+            payload["content"],
 
-            payload["difficulty"],
+            payload.get(
+                "difficulty",
+                "B2"
+            ),
 
             payload.get(
                 "known_vocabulary",
                 []
             )
 
-        )
-
-
-        print(
-            "[READING] AI result:",
-            result
         )
 
 
@@ -370,14 +368,10 @@ def _background_generate_and_update(
 
     except Exception as e:
 
-
         print(
             "[READING ERROR]",
             e
         )
-
-
-        traceback.print_exc()
 
 
         _update_reading_failed(
@@ -403,6 +397,7 @@ def create_reading(
     reading_id = _create_initial_reading(
         payload
     )
+
 
 
     background_tasks.add_task(
@@ -434,6 +429,7 @@ def create_reading(
 def get_readings():
 
     session = SessionLocal()
+
 
     try:
 
@@ -473,12 +469,14 @@ def get_readings():
 
 @router.get("/readings/{reading_id}")
 def get_reading(
-    reading_id: int
+    reading_id:int
 ):
 
     session = SessionLocal()
 
+
     try:
+
 
         reading = session.query(
             ReadingDB
@@ -487,21 +485,24 @@ def get_reading(
         ).first()
 
 
+
         if not reading:
 
             raise HTTPException(
-                status_code=404,
-                detail="Reading not found"
+                404,
+                "Reading not found"
             )
 
 
-        sentences = []
+
+        sentences=[]
+
 
 
         for sentence in reading.sentences:
 
 
-            words = [
+            words=[
 
                 w.word
 
@@ -515,22 +516,26 @@ def get_reading(
             )
 
 
+
             sentences.append({
 
                 "sentence_order":
                     sentence.sentence_order,
 
+
                 "original":
                     sentence.original,
+
 
                 "translation":
                     sentence.translation,
 
-                "words": [
+
+                "words":[
 
                     {
 
-                        "word": w,
+                        "word":w,
 
                         "dictionary":
                             dictionary.get(
@@ -546,21 +551,20 @@ def get_reading(
             })
 
 
+
         return {
 
-            "id": reading.id,
+            "id":reading.id,
 
-            "title": reading.title,
+            "title":reading.title,
 
-            "topic": reading.topic,
+            "difficulty":reading.difficulty,
 
-            "difficulty": reading.difficulty,
+            "status":reading.status,
 
-            "status": reading.status,
+            "content":reading.content,
 
-            "content": reading.content,
-
-            "sentences": sentences
+            "sentences":sentences
 
         }
 
