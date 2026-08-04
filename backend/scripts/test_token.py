@@ -1,17 +1,19 @@
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
+import json
+
+
 from ..services.ai_service import generate_reading
 from ..services.sentence_service import split_sentences
-from ..services.translation_service import translate_sentences
 from ..services.vocabulary_sync_service import (
     sync_vocabulary_to_dictionary
 )
-
 from ..services.word_token_service import (
     tokenize_sentence,
     normalize_word
 )
+
 
 from ..db import SessionLocal
 
@@ -21,10 +23,11 @@ from ..models_db import (
     ReadingWordDB
 )
 
-import json
 
 
 router = APIRouter()
+
+
 
 
 
@@ -42,6 +45,9 @@ class ReadingRequest(BaseModel):
 
 
 
+
+
+
 # =========================
 # Create initial reading
 # =========================
@@ -50,7 +56,13 @@ def _create_initial_reading(
     payload: dict
 ):
 
+    """
+    Create empty reading before AI generation.
+    """
+
+
     session = SessionLocal()
+
 
     try:
 
@@ -81,11 +93,17 @@ def _create_initial_reading(
         )
 
 
-        session.add(reading)
+        session.add(
+            reading
+        )
+
 
         session.commit()
 
-        session.refresh(reading)
+
+        session.refresh(
+            reading
+        )
 
 
         print(
@@ -96,14 +114,18 @@ def _create_initial_reading(
         return reading.id
 
 
+
     finally:
 
         session.close()
 
 
 
+
+
+
 # =========================
-# Save sentences + words
+# Save sentences and words
 # =========================
 
 def _save_sentences(
@@ -112,9 +134,14 @@ def _save_sentences(
     content: str
 ):
 
+    """
+    Split article into sentences.
+    Save sentences and words.
+    """
+
 
     print(
-        "[DB] Creating sentences"
+        "[DB] Creating sentences and words"
     )
 
 
@@ -123,52 +150,21 @@ def _save_sentences(
     )
 
 
-    print(
-        f"[Sentence] Found {len(sentences)} sentences"
-    )
-
-
-    translations = translate_sentences(
-        sentences
-    )
-
-
-    translation_map = {}
-
-
-    for item in translations:
-
-        translation_map[
-            item["sentence_order"]
-        ] = item["translation"]
-
-
-
-    total_words = 0
-
-
 
     for index, sentence in enumerate(
         sentences
     ):
 
 
-        order = index + 1
-
-
-
         sentence_obj = ReadingSentenceDB(
 
             reading_id=reading_id,
 
-            sentence_order=order,
+            sentence_order=index + 1,
 
             original=sentence,
 
-            translation=
-                translation_map.get(
-                    order
-                )
+            translation=None
 
         )
 
@@ -178,18 +174,14 @@ def _save_sentences(
         )
 
 
-        # get sentence id
         session.flush()
 
 
 
-        # =========================
-        # Save words
-        # =========================
-
         words = tokenize_sentence(
             sentence
         )
+
 
 
         for position, word in enumerate(
@@ -217,18 +209,16 @@ def _save_sentences(
             )
 
 
-            total_words += 1
-
-
 
     print(
         f"[DB] Saved {len(sentences)} sentences"
     )
 
 
-    print(
-        f"[DB] Saved {total_words} words"
-    )
+
+
+
+
 
 # =========================
 # Update success
@@ -239,14 +229,21 @@ def _update_reading_success(
     data: dict
 ):
 
+    """
+    Update reading after AI generation.
+    """
+
+
     session = SessionLocal()
 
 
     try:
 
+
         print(
             "[DB] Updating completed reading"
         )
+
 
 
         reading = session.query(
@@ -273,6 +270,7 @@ def _update_reading_success(
         )
 
 
+
         vocabulary = data.get(
             "vocabulary",
             []
@@ -280,8 +278,7 @@ def _update_reading_success(
 
 
         reading.vocabulary = json.dumps(
-            vocabulary,
-            ensure_ascii=False
+            vocabulary
         )
 
 
@@ -289,20 +286,11 @@ def _update_reading_success(
 
 
 
-        # =====================
-        # Dictionary sync
-        # =====================
-
         sync_vocabulary_to_dictionary(
             vocabulary
         )
 
 
-
-        # =====================
-        # Save sentences
-        # + words
-        # =====================
 
         _save_sentences(
 
@@ -318,7 +306,9 @@ def _update_reading_success(
         )
 
 
+
         session.commit()
+
 
 
         print(
@@ -338,6 +328,7 @@ def _update_reading_success(
 
         session.rollback()
 
+
         raise
 
 
@@ -345,10 +336,6 @@ def _update_reading_success(
     finally:
 
         session.close()
-
-
-
-
 
 # =========================
 # Update failed
@@ -358,12 +345,10 @@ def _update_reading_failed(
     reading_id: int
 ):
 
-
     session = SessionLocal()
 
 
     try:
-
 
         reading = session.query(
             ReadingDB
@@ -384,6 +369,77 @@ def _update_reading_failed(
     finally:
 
         session.close()
+
+
+
+
+
+
+# =========================
+# Background task
+# =========================
+
+def _background_generate_and_update(
+    reading_id: int,
+    payload: dict
+):
+
+
+    print(
+        "[TASK] Started"
+    )
+
+
+    try:
+
+
+        reading = generate_reading(
+
+            payload.get(
+                "topic"
+            ),
+
+            payload.get(
+                "difficulty"
+            ),
+
+            payload.get(
+                "known_vocabulary",
+                []
+            )
+
+        )
+
+
+        print(
+            "[AI] Generation finished"
+        )
+
+
+        _update_reading_success(
+
+            reading_id,
+
+            reading
+
+        )
+
+
+
+    except Exception as e:
+
+
+        print(
+            "[AI ERROR]",
+            e
+        )
+
+
+        _update_reading_failed(
+            reading_id
+        )
+
+
 
 
 
@@ -437,72 +493,6 @@ def create_reading(
 
 
 
-# =========================
-# Background generation
-# =========================
-
-def _background_generate_and_update(
-    reading_id: int,
-    payload: dict
-):
-
-
-    print(
-        "[TASK] Started"
-    )
-
-
-    try:
-
-
-        reading = generate_reading(
-
-            payload.get(
-                "topic"
-            ),
-
-            payload.get(
-                "difficulty"
-            ),
-
-            payload.get(
-                "known_vocabulary",
-                []
-            )
-
-        )
-
-
-        print(
-            "[AI] Generation finished"
-        )
-
-
-
-        _update_reading_success(
-
-            reading_id,
-
-            reading
-
-        )
-
-
-
-    except Exception as e:
-
-
-        print(
-            "[AI ERROR]",
-            e
-        )
-
-
-        _update_reading_failed(
-            reading_id
-        )
-
-
 
 
 
@@ -537,31 +527,27 @@ def get_readings():
 
             result.append({
 
-                "id":
-                    reading.id,
+                "id": reading.id,
 
-                "title":
-                    reading.title,
+                "title": reading.title,
 
-                "topic":
-                    reading.topic,
+                "topic": reading.topic,
 
-                "difficulty":
-                    reading.difficulty,
+                "difficulty": reading.difficulty,
 
-                "status":
-                    reading.status,
+                "status": reading.status,
 
-                "content":
-                    reading.content,
+                "content": reading.content,
 
-                "vocabulary":
-                    json.loads(
-                        reading.vocabulary or "[]"
-                    ),
 
-                "created_at":
-                    reading.created_at
+                "vocabulary": json.loads(
+
+                    reading.vocabulary or "[]"
+
+                ),
+
+
+                "created_at": reading.created_at
 
             })
 
@@ -579,17 +565,22 @@ def get_readings():
 
 
 
+
+
 # =========================
 # Get single reading
 # =========================
 
-@router.get("/readings/{reading_id}")
+@router.get(
+    "/readings/{reading_id}"
+)
 def get_reading(
     reading_id: int
 ):
 
 
     session = SessionLocal()
+
 
 
     try:
@@ -616,55 +607,32 @@ def get_reading(
 
 
 
-        sentences = []
-
-
-
-        for sentence in reading.sentences:
-
-
-            sentences.append({
-
-                "sentence_order":
-                    sentence.sentence_order,
-
-                "original":
-                    sentence.original,
-
-                "translation":
-                    sentence.translation
-
-            })
-
-
-
         return {
 
-            "id":
-                reading.id,
 
-            "title":
-                reading.title,
+            "id": reading.id,
 
-            "topic":
-                reading.topic,
 
-            "difficulty":
-                reading.difficulty,
+            "title": reading.title,
 
-            "status":
-                reading.status,
 
-            "content":
-                reading.content,
+            "topic": reading.topic,
 
-            "vocabulary":
-                json.loads(
-                    reading.vocabulary or "[]"
-                ),
 
-            "sentences":
-                sentences
+            "difficulty": reading.difficulty,
+
+
+            "status": reading.status,
+
+
+            "content": reading.content,
+
+
+            "vocabulary": json.loads(
+
+                reading.vocabulary or "[]"
+
+            )
 
         }
 

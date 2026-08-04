@@ -186,6 +186,64 @@ class ReadingSentenceDB(Base):
     )
 
 
+    words = relationship(
+        "ReadingWordDB",
+        back_populates="sentence",
+        cascade="all, delete-orphan"
+    )
+
+
+
+
+
+# =========================
+# Reading Words
+# =========================
+
+class ReadingWordDB(Base):
+
+    __tablename__ = "reading_words"
+
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+
+    sentence_id = Column(
+        Integer,
+        ForeignKey(
+            "reading_sentences.id"
+        ),
+        nullable=False
+    )
+
+
+    word = Column(
+        String(128),
+        nullable=False
+    )
+
+
+    lemma = Column(
+        String(128)
+    )
+
+
+    position = Column(
+        Integer,
+        nullable=False
+    )
+
+
+    sentence = relationship(
+        "ReadingSentenceDB",
+        back_populates="words"
+    )
+
+
 
 
 
