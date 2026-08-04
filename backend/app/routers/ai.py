@@ -2,7 +2,10 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from ..services.ai_service import generate_reading
-from ..services.sentence_service import split_sentences
+from ..services.sentence_service import (
+    split_sentences,
+    translate_sentence,
+)
 
 from ..db import SessionLocal
 from ..models_db import (
@@ -97,26 +100,36 @@ def _create_initial_reading(
 def _save_sentences(
     session,
     reading_id: int,
-    content: str
+    content: str,
 ):
-
     """
-    Split article and save sentences.
+    Split article into sentences and translate each sentence.
     """
 
+    print("[DB] Creating sentences")
 
-    print(
-        "[DB] Creating sentences"
-    )
-
-
-    sentences = split_sentences(
-        content
-    )
-
+    sentences = split_sentences(content)
 
     for index, sentence in enumerate(sentences):
 
+        print(
+            f"[AI] Translating sentence {index + 1}/{len(sentences)}"
+        )
+
+        try:
+
+            translation = translate_sentence(
+                sentence
+            )
+
+        except Exception as e:
+
+            print(
+                "[Translation ERROR]",
+                e
+            )
+
+            translation = ""
 
         obj = ReadingSentenceDB(
 
@@ -126,14 +139,11 @@ def _save_sentences(
 
             original=sentence,
 
-            translation=None
+            translation=translation
 
         )
 
-
         session.add(obj)
-
-
 
     print(
         f"[DB] Saved {len(sentences)} sentences"
@@ -505,6 +515,68 @@ def get_reading(
         }
 
 
+
+    finally:
+
+        session.close()
+
+@router.get("/readings/{reading_id}/sentences")
+def get_reading_sentences(
+    reading_id: int
+):
+    """
+    Get all sentences of one reading.
+    """
+
+    session = SessionLocal()
+
+    try:
+
+        reading = (
+            session.query(ReadingDB)
+            .filter(
+                ReadingDB.id == reading_id
+            )
+            .first()
+        )
+
+        if not reading:
+
+            raise HTTPException(
+                status_code=404,
+                detail="Reading not found"
+            )
+
+        sentences = (
+            session.query(
+                ReadingSentenceDB
+            )
+            .filter(
+                ReadingSentenceDB.reading_id == reading_id
+            )
+            .order_by(
+                ReadingSentenceDB.sentence_order
+            )
+            .all()
+        )
+
+        return [
+
+            {
+
+                "id": sentence.id,
+
+                "sentence_order": sentence.sentence_order,
+
+                "original": sentence.original,
+
+                "translation": sentence.translation
+
+            }
+
+            for sentence in sentences
+
+        ]
 
     finally:
 

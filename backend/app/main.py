@@ -3,6 +3,7 @@ import json
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .routers import (
     dictionary,
@@ -70,23 +71,13 @@ def seed_dictionary():
                 },
             ]
 
-
             for sample in samples:
-
-                entry = DictionaryEntryDB(
-                    **sample
-                )
-
-                session.add(entry)
-
+                session.add(DictionaryEntryDB(**sample))
 
             session.commit()
 
-
     finally:
-
         session.close()
-
 
 
 # =========================
@@ -96,19 +87,19 @@ def seed_dictionary():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    # startup
+    print("[APP] Initializing database...")
 
     init_db()
 
+    print("[APP] Seeding dictionary...")
+
     seed_dictionary()
 
+    print("[APP] Startup complete.")
 
     yield
 
-
-    # shutdown
-    # future cleanup can be added here
-
+    print("[APP] Shutdown.")
 
 
 # =========================
@@ -116,10 +107,27 @@ async def lifespan(app: FastAPI):
 # =========================
 
 app = FastAPI(
-    title="AI Reading Workspace - Backend",
+    title="AI Reading Workspace Backend",
     lifespan=lifespan,
 )
 
+
+# =========================
+# CORS
+# =========================
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",   # Vite
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",   # React
+        "http://127.0.0.1:3000",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 # =========================
@@ -129,49 +137,48 @@ app = FastAPI(
 app.include_router(
     dictionary.router,
     prefix="/dictionary",
-    tags=["dictionary"],
+    tags=["Dictionary"],
 )
 
 app.include_router(
     ai.router,
     prefix="/ai",
-    tags=["ai"],
+    tags=["AI"],
 )
 
 app.include_router(
     workspace.router,
     prefix="/workspace",
-    tags=["workspace"],
+    tags=["Workspace"],
 )
 
 app.include_router(
     vocabulary.router,
     prefix="/vocabulary",
-    tags=["vocabulary"],
+    tags=["Vocabulary"],
 )
 
 app.include_router(
     flashcards.router,
     prefix="/flashcards",
-    tags=["flashcards"],
+    tags=["Flashcards"],
 )
 
 app.include_router(
     auth.router,
     prefix="/auth",
-    tags=["auth"],
+    tags=["Authentication"],
 )
 
 
-
 # =========================
-# Health check
+# Root endpoint
 # =========================
 
 @app.get("/")
-def read_root():
+def root():
 
     return {
         "status": "ok",
-        "service": "AI Reading Workspace Backend",
+        "service": "AI Reading Workspace Backend"
     }
