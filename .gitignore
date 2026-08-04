@@ -1,0 +1,27 @@
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Environment
+.env
+*.env
+
+# Virtual environment
+.venv/
+
+# Database
+*.db
+
+# IDE
+.idea/
+.vscode/
+
+# Node frontend
+frontend/node_modules/
+frontend/dist/
+
+# Documentation
+documentation/
+
+# OS
+.DS_Store
