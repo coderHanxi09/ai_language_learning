@@ -9,17 +9,14 @@ router = APIRouter()
 
 
 
-
 @router.get("/{word}")
 def get_dictionary(
     word: str
 ):
 
-
     """
-    Get dictionary entry.
+    Lookup dictionary entry.
     """
-
 
 
     result = lookup_word(
@@ -29,7 +26,6 @@ def get_dictionary(
 
 
     if not result:
-
 
         raise HTTPException(
 

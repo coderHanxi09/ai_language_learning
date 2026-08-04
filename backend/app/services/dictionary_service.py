@@ -1,300 +1,287 @@
-from pathlib import Path
-import json
-
-from ..db import SessionLocal
-from ..models_db import DictionaryEntryDB
-
-
-# =========================
-# Dictionary file location
-# =========================
-
-BASE_DIR = Path(__file__).resolve().parents[2]
-
-
-DICTIONARY_FILE = (
-    BASE_DIR /
-    "data" /
-    "dictionary" /
-    "test.jsonl"
-)
-
+import nltk
+from nltk.corpus import wordnet
+from wordfreq import zipf_frequency
+import eng_to_ipa as ipa
 
 
 # =========================
-# Public API
+# POS mapping
 # =========================
 
-def lookup_word(word: str):
+WORDNET_POS_MAP = {
+
+    "n": "noun",
+
+    "v": "verb",
+
+    "a": "adjective",
+
+    "r": "adverb"
+
+}
+
+
+
+# =========================
+# CEFR estimation
+# =========================
+
+def estimate_cefr(word: str):
 
     """
-    Lookup word.
+    Estimate CEFR level using word frequency.
 
-    Priority:
-    1. SQLite cache
-    2. Local JSONL dictionary
-    3. Save result to SQLite
+    Higher zipf frequency:
+    easier word.
     """
 
 
-    word = word.lower().strip()
+    freq = zipf_frequency(
+        word,
+        "en"
+    )
 
 
-    session = SessionLocal()
+    if freq >= 6:
+
+        return "A1"
 
 
-    try:
+    elif freq >= 5:
 
-        # =========================
-        # 1. Search database cache
-        # =========================
-
-        existing = session.query(
-            DictionaryEntryDB
-        ).filter(
-            DictionaryEntryDB.word == word
-        ).first()
+        return "A2"
 
 
+    elif freq >= 4:
 
-        if existing:
-
-
-            return {
-
-                "word": existing.word,
-
-                "lemma": existing.lemma,
-
-                "definition": existing.definition,
-
-                "pos": existing.pos,
-
-                "cefr": existing.cefr,
-
-                "ipa": existing.ipa,
-
-                "examples": (
-                    json.loads(
-                        existing.examples
-                    )
-                    if existing.examples
-                    else []
-                )
-
-            }
+        return "B1"
 
 
+    elif freq >= 3:
+
+        return "B2"
 
 
-        # =========================
-        # 2. Search JSONL
-        # =========================
+    elif freq >= 2:
 
-        result = search_json_dictionary(
-            word
-        )
+        return "C1"
 
 
+    else:
 
-        if not result:
-
-            return None
-
-
-
-
-        # =========================
-        # 3. Save cache
-        # =========================
-
-        entry = DictionaryEntryDB(
-
-            word=result["word"],
-
-            lemma=result.get(
-                "lemma"
-            ),
-
-            definition=result.get(
-                "definition"
-            ),
-
-            pos=result.get(
-                "pos"
-            ),
-
-            cefr=result.get(
-                "cefr"
-            ),
-
-            ipa=result.get(
-                "ipa"
-            ),
-
-            examples=json.dumps(
-                result.get(
-                    "examples",
-                    []
-                )
-            )
-
-        )
-
-
-
-        session.add(entry)
-
-        session.commit()
-
-
-
-        return result
-
-
-
-
-    finally:
-
-        session.close()
-
-
+        return "C2"
 
 
 
 
 
 # =========================
-# JSONL search
+# Lemma
 # =========================
 
-def search_json_dictionary(
+def get_lemma(
     word: str
 ):
 
 
-    if not DICTIONARY_FILE.exists():
+    synsets = wordnet.synsets(
+        word
+    )
 
-        print(
-            "[Dictionary] File not found:",
-            DICTIONARY_FILE
-        )
+
+    if not synsets:
+
+        return word
+
+
+
+    lemma = synsets[0].lemmas()[0].name()
+
+
+    return lemma.replace(
+        "_",
+        " "
+    )
+
+
+
+
+
+# =========================
+# POS
+# =========================
+
+def get_pos(
+    word: str
+):
+
+
+    synsets = wordnet.synsets(
+        word
+    )
+
+
+    if not synsets:
 
         return None
 
 
 
-
-    with open(
-        DICTIONARY_FILE,
-        "r",
-        encoding="utf-8"
-    ) as file:
+    pos = synsets[0].pos()
 
 
-
-        for line in file:
-
-
-            if not line.strip():
-
-                continue
-
-
-
-            data = json.loads(
-                line
-            )
-
-
-
-            if data.get(
-                "word"
-            ) != word:
-
-
-                continue
+    return WORDNET_POS_MAP.get(
+        pos
+    )
 
 
 
 
-            senses = data.get(
-                "senses",
-                []
-            )
+
+# =========================
+# Definition
+# =========================
+
+def get_definition(
+    word: str
+):
+
+
+    synsets = wordnet.synsets(
+        word
+    )
+
+
+    if not synsets:
+
+        return None
 
 
 
-            definition = None
-
-
-
-            if senses:
-
-
-                glosses = senses[0].get(
-                    "glosses",
-                    []
-                )
-
-
-                if glosses:
-
-                    definition = glosses[0]
-
-
-
-
-            sounds = data.get(
-                "sounds",
-                []
-            )
-
-
-
-            ipa = None
-
-
-            if sounds:
-
-                ipa = sounds[0].get(
-                    "ipa"
-                )
+    return synsets[0].definition()
 
 
 
 
-            return {
+
+# =========================
+# Examples
+# =========================
+
+def get_examples(
+    word: str
+):
 
 
-                "word": word,
+    synsets = wordnet.synsets(
+        word
+    )
 
 
-                "lemma": data.get(
-                    "word"
-                ),
+    if not synsets:
+
+        return []
 
 
-                "definition": definition,
+
+    return synsets[0].examples()
 
 
-                "pos": data.get(
-                    "pos"
-                ),
 
 
-                "cefr": data.get(
-                    "cefr"
-                ),
+
+# =========================
+# IPA
+# =========================
+
+def get_ipa(
+    word: str
+):
 
 
-                "ipa": ipa,
+    try:
+
+        result = ipa.convert(
+            word
+        )
 
 
-                "examples": []
+        if result:
 
-            }
+            return result
+
+
+
+    except Exception:
+
+        pass
 
 
 
     return None
+
+
+
+
+
+# =========================
+# Main lookup
+# =========================
+
+def lookup_word(
+    word: str
+):
+
+
+    word = word.lower().strip()
+
+
+
+    lemma = get_lemma(
+        word
+    )
+
+
+    definition = get_definition(
+        word
+    )
+
+
+    pos = get_pos(
+        word
+    )
+
+
+    examples = get_examples(
+        word
+    )
+
+
+    pronunciation = get_ipa(
+        word
+    )
+
+
+    cefr = estimate_cefr(
+        word
+    )
+
+
+
+    return {
+
+        "word": word,
+
+        "lemma": lemma,
+
+        "definition": definition,
+
+        "pos": pos,
+
+        "cefr": cefr,
+
+        "ipa": pronunciation,
+
+        "examples": examples
+
+    }

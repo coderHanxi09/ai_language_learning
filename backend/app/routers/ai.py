@@ -2,9 +2,9 @@ from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 
 from ..services.ai_service import generate_reading
-from ..services.sentence_service import (
-    split_sentences,
-    translate_sentence,
+from ..services.sentence_service import split_sentences
+from ..services.vocabulary_sync_service import (
+    sync_vocabulary_to_dictionary
 )
 
 from ..db import SessionLocal
@@ -20,6 +20,10 @@ router = APIRouter()
 
 
 
+# =========================
+# Request Model
+# =========================
+
 class ReadingRequest(BaseModel):
 
     topic: str
@@ -31,27 +35,20 @@ class ReadingRequest(BaseModel):
 
 
 
+
+# =========================
+# Create initial reading
+# =========================
+
 def _create_initial_reading(
     payload: dict
 ):
 
-    """
-    Create empty reading before AI generation.
-    """
-
-
     session = SessionLocal()
-
 
     try:
 
-
-        print(
-            "[DB] Creating initial reading"
-        )
-
-
-        rd = ReadingDB(
+        reading = ReadingDB(
 
             title="Generating...",
 
@@ -73,20 +70,19 @@ def _create_initial_reading(
         )
 
 
-        session.add(rd)
+        session.add(reading)
 
         session.commit()
 
-        session.refresh(rd)
+        session.refresh(reading)
 
 
         print(
-            f"[DB] Created reading id={rd.id}"
+            f"[DB] Created reading id={reading.id}"
         )
 
 
-        return rd.id
-
+        return reading.id
 
 
     finally:
@@ -97,41 +93,47 @@ def _create_initial_reading(
 
 
 
+# =========================
+# Save sentences
+# =========================
+
 def _save_sentences(
     session,
     reading_id: int,
-    content: str,
+    content: str
 ):
-    """
-    Split article into sentences and translate each sentence.
-    """
 
-    print("[DB] Creating sentences")
 
-    sentences = split_sentences(content)
+    print(
+        "[DB] Creating sentences"
+    )
 
-    for index, sentence in enumerate(sentences):
 
-        print(
-            f"[AI] Translating sentence {index + 1}/{len(sentences)}"
-        )
+    # avoid duplicate sentences
 
-        try:
+    old = session.query(
+        ReadingSentenceDB
+    ).filter(
+        ReadingSentenceDB.reading_id == reading_id
+    ).all()
 
-            translation = translate_sentence(
-                sentence
-            )
 
-        except Exception as e:
+    for item in old:
 
-            print(
-                "[Translation ERROR]",
-                e
-            )
+        session.delete(item)
 
-            translation = ""
 
-        obj = ReadingSentenceDB(
+    sentences = split_sentences(
+        content
+    )
+
+
+    for index, sentence in enumerate(
+        sentences
+    ):
+
+
+        sentence_obj = ReadingSentenceDB(
 
             reading_id=reading_id,
 
@@ -139,11 +141,14 @@ def _save_sentences(
 
             original=sentence,
 
-            translation=translation
+            translation=None
 
         )
 
-        session.add(obj)
+
+        session.add(sentence_obj)
+
+
 
     print(
         f"[DB] Saved {len(sentences)} sentences"
@@ -153,14 +158,14 @@ def _save_sentences(
 
 
 
-def _update_reading_success(
-    reading_id: int,
-    data: dict
-):
+# =========================
+# Update success
+# =========================
 
-    """
-    Update completed reading.
-    """
+def _update_reading_success(
+    reading_id:int,
+    data:dict
+):
 
 
     session = SessionLocal()
@@ -198,11 +203,14 @@ def _update_reading_success(
         )
 
 
+        vocabulary = data.get(
+            "vocabulary",
+            []
+        )
+
+
         reading.vocabulary = json.dumps(
-            data.get(
-                "vocabulary",
-                []
-            )
+            vocabulary
         )
 
 
@@ -210,7 +218,29 @@ def _update_reading_success(
 
 
 
-        # create sentences
+        # -------------------------
+        # Dictionary sync
+        # -------------------------
+
+        try:
+
+            sync_vocabulary_to_dictionary(
+                vocabulary
+            )
+
+
+        except Exception as e:
+
+            print(
+                "[DICT ERROR]",
+                e
+            )
+
+
+
+        # -------------------------
+        # Sentence creation
+        # -------------------------
 
         _save_sentences(
 
@@ -232,7 +262,6 @@ def _update_reading_success(
         print(
             "[DB] Reading completed"
         )
-
 
 
     except Exception as e:
@@ -258,6 +287,10 @@ def _update_reading_success(
 
 
 
+# =========================
+# Failed
+# =========================
+
 def _update_reading_failed(
     reading_id:int
 ):
@@ -279,7 +312,6 @@ def _update_reading_failed(
 
         if reading:
 
-
             reading.status="failed"
 
             session.commit()
@@ -294,19 +326,25 @@ def _update_reading_failed(
 
 
 
+# =========================
+# Create API
+# =========================
+
 @router.post("/readings")
 def create_reading(
-    req: ReadingRequest,
-    background_tasks: BackgroundTasks
+    req:ReadingRequest,
+    background_tasks:BackgroundTasks
 ):
 
 
-    payload = req.model_dump()
+    payload=req.model_dump()
 
 
-    reading_id = _create_initial_reading(
+
+    reading_id=_create_initial_reading(
         payload
     )
+
 
 
     background_tasks.add_task(
@@ -320,14 +358,12 @@ def create_reading(
     )
 
 
+
     return {
 
-        "id": reading_id,
+        "id":reading_id,
 
-        "status": "generating",
-
-        "message":
-            "Reading generation started"
+        "status":"generating"
 
     }
 
@@ -335,6 +371,9 @@ def create_reading(
 
 
 
+# =========================
+# Background
+# =========================
 
 def _background_generate_and_update(
     reading_id:int,
@@ -342,23 +381,19 @@ def _background_generate_and_update(
 ):
 
 
-    print(
-        "[TASK] Started"
-    )
-
-
     try:
 
 
-        reading = generate_reading(
+        print(
+            "[AI] Generating reading..."
+        )
 
-            payload.get(
-                "topic"
-            ),
 
-            payload.get(
-                "difficulty"
-            ),
+        result = generate_reading(
+
+            payload["topic"],
+
+            payload["difficulty"],
 
             payload.get(
                 "known_vocabulary",
@@ -368,19 +403,13 @@ def _background_generate_and_update(
         )
 
 
-        print(
-            "[AI] Generation finished"
-        )
-
-
         _update_reading_success(
 
             reading_id,
 
-            reading
+            result
 
         )
-
 
 
     except Exception as e:
@@ -400,23 +429,25 @@ def _background_generate_and_update(
 
 
 
+# =========================
+# List readings
+# =========================
 
 @router.get("/readings")
 def get_readings():
 
 
-    session = SessionLocal()
+    session=SessionLocal()
 
 
     try:
 
 
-        readings = session.query(
+        readings=session.query(
             ReadingDB
         ).order_by(
             ReadingDB.id.desc()
         ).all()
-
 
 
         result=[]
@@ -437,12 +468,6 @@ def get_readings():
 
                 "status":reading.status,
 
-                "content":reading.content,
-
-                "vocabulary":json.loads(
-                    reading.vocabulary or "[]"
-                ),
-
                 "created_at":reading.created_at
 
             })
@@ -460,6 +485,9 @@ def get_readings():
 
 
 
+# =========================
+# Single reading
+# =========================
 
 @router.get("/readings/{reading_id}")
 def get_reading(
@@ -494,7 +522,28 @@ def get_reading(
 
 
 
+        sentences=[]
+
+
+        for sentence in reading.sentences:
+
+
+            sentences.append({
+
+                "id":sentence.id,
+
+                "sentence_order":sentence.sentence_order,
+
+                "original":sentence.original,
+
+                "translation":sentence.translation
+
+            })
+
+
+
         return {
+
 
             "id":reading.id,
 
@@ -508,75 +557,17 @@ def get_reading(
 
             "content":reading.content,
 
+
             "vocabulary":json.loads(
                 reading.vocabulary or "[]"
-            )
+            ),
+
+
+            "sentences":sentences
 
         }
 
 
-
-    finally:
-
-        session.close()
-
-@router.get("/readings/{reading_id}/sentences")
-def get_reading_sentences(
-    reading_id: int
-):
-    """
-    Get all sentences of one reading.
-    """
-
-    session = SessionLocal()
-
-    try:
-
-        reading = (
-            session.query(ReadingDB)
-            .filter(
-                ReadingDB.id == reading_id
-            )
-            .first()
-        )
-
-        if not reading:
-
-            raise HTTPException(
-                status_code=404,
-                detail="Reading not found"
-            )
-
-        sentences = (
-            session.query(
-                ReadingSentenceDB
-            )
-            .filter(
-                ReadingSentenceDB.reading_id == reading_id
-            )
-            .order_by(
-                ReadingSentenceDB.sentence_order
-            )
-            .all()
-        )
-
-        return [
-
-            {
-
-                "id": sentence.id,
-
-                "sentence_order": sentence.sentence_order,
-
-                "original": sentence.original,
-
-                "translation": sentence.translation
-
-            }
-
-            for sentence in sentences
-
-        ]
 
     finally:
 
