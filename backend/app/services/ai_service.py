@@ -1,5 +1,6 @@
 import json
 from typing import List
+
 from app.ai.factory import get_ai_provider
 
 
@@ -13,82 +14,131 @@ def _build_prompt(
 
     vocab_part = ""
 
-
     if known_vocabulary:
 
         vocab_part = (
-            "Known vocabulary: "
+            "Try to naturally include these known words if possible: "
             + ", ".join(known_vocabulary)
             + ".\n"
         )
 
 
+    return f"""
+You are an AI language learning assistant.
 
-    return (
+Generate a reading article for language learners.
 
-        "Generate a reading article for language learners.\n"
+Level:
+{difficulty}
 
-        f"Difficulty level: {difficulty}.\n"
+Topic:
+{topic}
 
-        f"Topic: {topic}.\n"
+{vocab_part}
 
-        f"{vocab_part}"
+Requirements:
 
+1. Create an interesting and natural title.
+2. Write a reading article suitable for {difficulty} learners.
+3. Article length:
+   - 3 to 5 paragraphs
+   - Around 250-350 words
+4. Extract 8-12 useful vocabulary items.
+5. Vocabulary should match the article.
+6. Return ONLY JSON.
+7. Do NOT use markdown.
+8. Do NOT add explanations.
 
-        "Requirements:\n"
+Return exactly this JSON structure:
 
-        "- Create a suitable title.\n"
-
-        "- Write a natural reading article.\n"
-
-        "- Provide useful vocabulary.\n"
-
-        "- Return ONLY valid JSON.\n\n"
-
-
-        "JSON format:\n"
-
-        "{\n"
-
-        '  "title": "...",\n'
-
-        '  "content": "...",\n'
-
-        '  "vocabulary": ["word1","word2"]\n'
-
-        "}"
-
-    )
+{{
+    "title": "Example title",
+    "content": "Article content",
+    "vocabulary": [
+        "word1",
+        "word2"
+    ]
+}}
+"""
 
 
 
 def _strip_code_fences(
-    text:str
-)->str:
+    text: str
+) -> str:
 
 
-    text=text.strip()
+    if not text:
+
+        return ""
 
 
-    if not text.startswith("```"):
-
-        return text
+    text = text.strip()
 
 
-    lines=text.splitlines()
+    # remove ```json
+    if text.startswith("```"):
 
 
-    if lines:
-
-        lines=lines[1:]
+        lines = text.splitlines()
 
 
-    if lines and lines[-1].startswith("```"):
-
-        lines=lines[:-1]
+        lines = lines[1:]
 
 
-    return "\n".join(lines).strip()
+        if lines and lines[-1].strip() == "```":
+
+            lines = lines[:-1]
+
+
+        text = "\n".join(lines)
+
+
+    return text.strip()
+
+
+
+def _extract_json(
+    text: str
+) -> dict:
+
+
+    """
+    Extract JSON object from AI response.
+    """
+
+
+    text = _strip_code_fences(text)
+
+
+    try:
+
+        return json.loads(text)
+
+
+    except json.JSONDecodeError:
+
+
+        # try extracting {...}
+
+        start = text.find("{")
+
+        end = text.rfind("}")
+
+
+        if start != -1 and end != -1:
+
+
+            json_text = text[start:end + 1]
+
+
+            return json.loads(
+                json_text
+            )
+
+
+        raise
+
 
 
 
@@ -98,6 +148,8 @@ def generate_reading(
     known_vocabulary: List[str]
 ) -> dict:
 
+
+    print("[AI] Generating reading...")
 
 
     prompt = _build_prompt(
@@ -118,9 +170,58 @@ def generate_reading(
         )
 
 
-        return json.loads(
-            _strip_code_fences(response)
+        print(
+            "[AI] Raw response received"
         )
+
+
+        result = _extract_json(
+            response
+        )
+
+
+        # validation
+
+        if not result.get("title"):
+
+            raise ValueError(
+                "Missing title"
+            )
+
+
+        if not result.get("content"):
+
+            raise ValueError(
+                "Missing content"
+            )
+
+
+        if not isinstance(
+            result.get("vocabulary"),
+            list
+        ):
+
+            result["vocabulary"] = []
+
+
+
+        print(
+            "[AI] JSON parsed successfully"
+        )
+
+
+        return {
+
+
+            "title": result["title"],
+
+
+            "content": result["content"],
+
+
+            "vocabulary": result["vocabulary"][:12]
+
+        }
 
 
 
@@ -128,22 +229,24 @@ def generate_reading(
 
 
         print(
-            "[AI fallback]",
+            "[AI ERROR]",
             exc
         )
 
 
+        # fallback
+
         return {
 
+
             "title":
-                f"{topic.title()} - generated reading",
+                f"{topic.title()} - Reading",
 
 
             "content":
                 (
-                    f"This is a {difficulty} "
-                    f"level reading about {topic}. "
-                    "AI generation failed."
+                    f"This reading is about {topic}. "
+                    f"It is designed for {difficulty} learners."
                 ),
 
 
