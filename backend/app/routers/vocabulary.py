@@ -122,7 +122,7 @@ def create_vocab(
 # Add from reading
 # =========================
 
-@router.post("/from-reading")
+@router.post("from-reading")
 def add_from_reading(
     body: dict
 ):
@@ -394,7 +394,7 @@ def get_vocabularies():
 # Get one word
 # =========================
 
-@router.get("/{word}")
+@router.get("{word}")
 def get_vocab(
     word:str
 ):
@@ -454,7 +454,7 @@ def get_vocab(
 # Delete vocabulary
 # =========================
 
-@router.delete("/{word}")
+@router.delete("{word}")
 def delete_vocab(
     word:str
 ):
