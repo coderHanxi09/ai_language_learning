@@ -6,11 +6,8 @@ from ..db import SessionLocal
 
 from ..models_db import (
     VocabularyDB,
-    VocabularyTranslationDB
-)
-
-from ..services.dictionary_service import (
-    lookup_word
+    VocabularyTranslationDB,
+    FlashcardDB
 )
 
 
@@ -20,17 +17,29 @@ router = APIRouter()
 
 
 
+
+
 # =====================================================
-# Request
+# Request Model
 # =====================================================
 
-class VocabularyRequest(BaseModel):
+class VocabularyCreateRequest(BaseModel):
 
     word: str
 
-    language: str = "de"
+    lemma: str
 
+    source_language: str = "de"
 
+    translation: str | None = None
+
+    definition: str | None = None
+
+    cefr: str | None = None
+
+    ipa: str | None = None
+
+    reading_id: int | None = None
 
 
 
@@ -39,60 +48,158 @@ class VocabularyRequest(BaseModel):
 
 
 # =====================================================
-# Add vocabulary
+# Create Flashcard automatically
 # =====================================================
 
-@router.post("")
-def add_vocabulary(
-    req: VocabularyRequest
+def create_flashcard_for_vocabulary(
+    session,
+    vocabulary: VocabularyDB
 ):
 
 
-    word = req.word.strip()
+    # check existing
+
+    existing = session.query(
+        FlashcardDB
+    ).filter(
+
+        FlashcardDB.vocabulary_id
+        ==
+        vocabulary.id
+
+    ).first()
 
 
-    if not word:
 
-        raise HTTPException(
+    if existing:
 
-            status_code=400,
+        return existing
 
-            detail="Word required"
+
+
+
+
+
+    # count current flashcards
+
+    count = session.query(
+        FlashcardDB
+    ).count()
+
+
+
+    # every 100 words = new set
+
+    set_number = (
+        count // 100
+    ) + 1
+
+
+
+
+
+
+    # build back content
+
+    back_parts = []
+
+
+
+    if vocabulary.translations:
+
+
+        for t in vocabulary.translations:
+
+
+            back_parts.append(
+                t.translation
+            )
+
+
+
+    if vocabulary.definition:
+
+
+        back_parts.append(
+
+            vocabulary.definition
 
         )
 
 
 
-    # =================================================
-    # Always get dictionary information
-    # =================================================
+    if vocabulary.cefr:
 
 
-    dictionary = lookup_word(
+        back_parts.append(
 
-        word,
+            f"CEFR: {vocabulary.cefr}"
 
-        req.language
+        )
+
+
+
+    if vocabulary.ipa:
+
+
+        back_parts.append(
+
+            f"IPA: {vocabulary.ipa}"
+
+        )
+
+
+
+
+
+    flashcard = FlashcardDB(
+
+
+        front=vocabulary.word,
+
+
+        back="\n".join(
+            back_parts
+        ),
+
+
+        status="learning",
+
+
+        set_number=set_number,
+
+
+        vocabulary_id=vocabulary.id
 
     )
 
 
 
-    if not dictionary:
+    session.add(
+        flashcard
+    )
 
 
-        raise HTTPException(
-
-            status_code=404,
-
-            detail="Dictionary entry not found"
-
-        )
+    session.flush()
 
 
 
+    return flashcard
 
 
+
+
+
+
+
+# =====================================================
+# POST /vocabulary
+# =====================================================
+
+@router.post("")
+def create_vocabulary(
+    req: VocabularyCreateRequest
+):
 
 
     session = SessionLocal()
@@ -102,30 +209,17 @@ def add_vocabulary(
     try:
 
 
-        lemma = dictionary.get(
-
-            "lemma",
-
-            word
-
-        )
-
-
-
-
-        # check duplicate
-
+        # avoid duplicate
 
         existing = session.query(
-
             VocabularyDB
-
         ).filter(
 
-            VocabularyDB.lemma == lemma,
+            VocabularyDB.lemma == req.lemma,
 
-            VocabularyDB.source_language ==
-            dictionary["language"]
+            VocabularyDB.source_language
+            ==
+            req.source_language
 
         ).first()
 
@@ -137,12 +231,12 @@ def add_vocabulary(
             return {
 
 
-                "message":
-                    "Already exists",
-
-
                 "id":
-                    existing.id
+                    existing.id,
+
+
+                "message":
+                    "Vocabulary already exists"
 
             }
 
@@ -152,38 +246,35 @@ def add_vocabulary(
 
 
 
-
-        vocab = VocabularyDB(
-
-
-            word=dictionary["word"],
+        vocabulary = VocabularyDB(
 
 
-            lemma=lemma,
+            word=req.word,
 
 
-            source_language=dictionary["language"],
+            lemma=req.lemma,
 
 
-            dictionary_id=dictionary.get(
-                "id"
-            ),
+            source_language=req.source_language,
 
 
-            cefr=dictionary.get(
-                "cefr"
-            ),
+            definition=req.definition,
 
 
-            source="reading"
+            cefr=req.cefr,
 
+
+            ipa=req.ipa,
+
+
+            reading_id=req.reading_id
 
         )
 
 
 
         session.add(
-            vocab
+            vocabulary
         )
 
 
@@ -194,40 +285,44 @@ def add_vocabulary(
 
 
 
-        # ===============================
-        # Save translations
-        # ===============================
+        # save translation
+
+        if req.translation:
 
 
-        translations = dictionary.get(
+            translation = VocabularyTranslationDB(
 
-            "translations",
 
-            {}
+                vocabulary_id=vocabulary.id,
+
+
+                language="en",
+
+
+                translation=req.translation
+
+            )
+
+
+            session.add(
+                translation
+            )
+
+
+
+
+
+
+
+        # create flashcard automatically
+
+        flashcard = create_flashcard_for_vocabulary(
+
+            session,
+
+            vocabulary
 
         )
-
-
-
-        for lang,text in translations.items():
-
-
-            if text:
-
-
-                session.add(
-
-                    VocabularyTranslationDB(
-
-                        vocabulary_id=vocab.id,
-
-                        language=lang,
-
-                        translation=text
-
-                    )
-
-                )
 
 
 
@@ -239,23 +334,35 @@ def add_vocabulary(
 
 
 
+        session.refresh(
+            vocabulary
+        )
+
+
+
         return {
 
 
-            "message":
-                "Vocabulary added",
-
-
             "id":
-                vocab.id,
+                vocabulary.id,
 
 
             "word":
-                vocab.word
+                vocabulary.word,
 
+
+            "flashcard_id":
+                flashcard.id,
+
+
+            "set_number":
+                flashcard.set_number,
+
+
+            "message":
+                "Vocabulary and flashcard created"
 
         }
-
 
 
 
@@ -283,9 +390,8 @@ def add_vocabulary(
 
 
 # =====================================================
-# Get vocabulary
+# GET /vocabulary
 # =====================================================
-
 
 @router.get("")
 def get_vocabulary():
@@ -298,40 +404,40 @@ def get_vocabulary():
     try:
 
 
-        words = session.query(
+        items = session.query(
 
             VocabularyDB
+
+        ).order_by(
+
+            VocabularyDB.id.desc()
 
         ).all()
 
 
 
 
-        result=[]
+
+
+        result = []
 
 
 
-
-        for word in words:
-
-
-
-            translations={}
+        for item in items:
 
 
 
-            for t in word.translations:
-
-
-                translations[
-                    t.language
-                ] = t.translation
+            translation = None
 
 
 
+            if item.translations:
 
 
-            dictionary = word.dictionary
+                translation = (
+                    item.translations[0]
+                    .translation
+                )
 
 
 
@@ -340,55 +446,112 @@ def get_vocabulary():
 
 
                 "id":
-                    word.id,
+                    item.id,
 
 
                 "word":
-                    word.word,
+                    item.word,
 
 
                 "lemma":
-                    word.lemma,
-
-
-                "language":
-                    word.source_language,
-
-
-                "definition":
-
-                    dictionary.definition
-                    if dictionary
-                    else "",
-
-
-                "pos":
-
-                    dictionary.pos
-                    if dictionary
-                    else "",
-
-
-
-                "cefr":
-
-                    word.cefr,
-
+                    item.lemma,
 
 
                 "translation":
+                    translation,
 
-                    translations.get(
-                        "en",
-                        ""
-                    )
+
+                "definition":
+                    item.definition,
+
+
+                "cefr":
+                    item.cefr,
+
+
+                "ipa":
+                    item.ipa,
+
+
+                "source_language":
+                    item.source_language
 
 
             })
 
 
 
+
         return result
+
+
+
+
+    finally:
+
+
+        session.close()
+
+
+
+
+
+
+
+# =====================================================
+# DELETE
+# =====================================================
+
+@router.delete("/{vocabulary_id}")
+def delete_vocabulary(
+    vocabulary_id:int
+):
+
+
+    session = SessionLocal()
+
+
+
+    try:
+
+
+        item = session.query(
+            VocabularyDB
+        ).filter(
+
+            VocabularyDB.id == vocabulary_id
+
+        ).first()
+
+
+
+        if not item:
+
+
+            raise HTTPException(
+
+                status_code=404,
+
+                detail="Vocabulary not found"
+
+            )
+
+
+
+        session.delete(item)
+
+
+        session.commit()
+
+
+
+        return {
+
+
+            "message":
+                "deleted"
+
+        }
 
 
 

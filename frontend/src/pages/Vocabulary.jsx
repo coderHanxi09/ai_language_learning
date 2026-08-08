@@ -19,36 +19,27 @@ function Vocabulary(){
 
 
 
-
     async function loadVocabulary(){
 
 
         try{
 
 
-            const res = await api.get(
-                "/vocabulary"
-            );
-
-
-            console.log(
-                "VOCABULARY:",
-                res.data
-            );
-
+            const response =
+                await api.get(
+                    "/vocabulary"
+                );
 
 
             setWords(
-                res.data
+                response.data
             );
-
 
 
         }catch(error){
 
 
             console.error(
-                "Vocabulary error:",
                 error
             );
 
@@ -69,8 +60,6 @@ function Vocabulary(){
 
 
 
-
-
     useEffect(()=>{
 
 
@@ -84,24 +73,22 @@ function Vocabulary(){
 
 
 
-
-
-
     if(loading){
 
 
         return (
 
-            <h2>
+            <div style={{
+                padding:"40px"
+            }}>
+
                 Loading vocabulary...
-            </h2>
+
+            </div>
 
         );
 
-
     }
-
-
 
 
 
@@ -115,231 +102,154 @@ function Vocabulary(){
 
         style={{
 
-            maxWidth:"900px",
+            padding:"40px",
 
-            margin:"0 auto",
+            maxWidth:"1000px",
 
-            padding:"20px"
+            margin:"auto"
 
         }}
 
         >
 
 
-
             <h1>
-                My Vocabulary
+                📚 Vocabulary
             </h1>
 
 
 
 
 
-
             {
-                words.length === 0 && (
+                words.length === 0
+
+                ?
+
+                <p>
+                    No vocabulary yet.
+                </p>
+
+                :
+
+                <div>
 
 
-                    <p>
-                        No vocabulary yet.
-                    </p>
+                {
+                    words.map(
+                        word=>(
 
+                        <div
 
-                )
-
-            }
-
-
-
-
-
-
-
-            {
-
-            words.map(
-
-                word => (
-
-
-
-                <div
-
-                key={word.id}
-
-
-                style={{
-
-                    border:"1px solid #ddd",
-
-                    borderRadius:"10px",
-
-                    padding:"20px",
-
-                    marginBottom:"20px",
-
-                    background:"#fff"
-
-                }}
-
-
-
-                >
-
-
-
-                    <h2>
-
-                        {word.word}
-
-                    </h2>
-
-
-
-
-
-                    <p>
-
-                        <b>
-                            Lemma:
-                        </b>
-
-                        {" "}
-
-                        {word.lemma || "-"}
-
-                    </p>
-
-
-
-
-
-
-                    <p>
-
-                        <b>
-                            Definition:
-                        </b>
-
-
-                        <br/>
-
-
-                        {
-
-                            word.definition ||
-
-                            "-"
-
+                        key={
+                            word.id
                         }
 
 
-                    </p>
+                        style={{
+
+                            border:
+                            "1px solid #ddd",
+
+                            borderRadius:
+                            "12px",
+
+                            padding:
+                            "20px",
+
+                            marginBottom:
+                            "15px"
+
+                        }}
+
+                        >
+
+
+                            <h2>
+                                {
+                                    word.word
+                                }
+                            </h2>
 
 
 
+                            <p>
+                                Lemma:
+                                {" "}
+                                {
+                                    word.lemma
+                                }
+                            </p>
 
 
 
+                            {
+                                word.translation &&
 
-                    <p>
+                                <p>
 
-                        <b>
-                            Translation:
-                        </b>
+                                    Translation:
+                                    {" "}
+                                    {
+                                        word.translation
+                                    }
 
+                                </p>
 
-                        <br/>
-
-
-                        {
-
-                            word.translation ||
-
-                            "-"
-
-                        }
-
-
-                    </p>
+                            }
 
 
 
+                            {
+                                word.definition &&
+
+                                <p>
+
+                                    Definition:
+                                    {" "}
+                                    {
+                                        word.definition
+                                    }
+
+                                </p>
+
+                            }
 
 
 
+                            {
+                                word.cefr &&
+
+                                <p>
+
+                                    CEFR:
+                                    {" "}
+                                    {
+                                        word.cefr
+                                    }
+
+                                </p>
+
+                            }
 
 
-                    <p>
-
-                        <b>
-                            CEFR:
-                        </b>
+                        </div>
 
 
-                        {" "}
+                        )
 
+                    )
 
-                        {
-
-                            word.cefr ||
-
-                            "-"
-
-                        }
-
-
-                    </p>
-
-
-
-
-
-
-
-                    <p>
-
-                        <b>
-                            POS:
-                        </b>
-
-
-                        {" "}
-
-
-                        {
-
-                            word.pos ||
-
-                            "-"
-
-                        }
-
-
-                    </p>
-
-
-
-
-
+                }
 
 
                 </div>
 
-
-                )
-
-
-            )
-
             }
 
 
 
-
-
         </div>
-
 
     );
 

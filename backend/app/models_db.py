@@ -610,6 +610,10 @@ class VocabularyTranslationDB(Base):
 # Flashcards
 # =====================================================
 
+# =====================================================
+# Flashcards
+# =====================================================
+
 class FlashcardDB(Base):
 
     __tablename__ = "flashcards"
@@ -621,25 +625,62 @@ class FlashcardDB(Base):
     )
 
 
-    # Front side
-    # German word
+    # Display word
+    # Example:
+    # Entscheidung
     front = Column(
         Text,
         nullable=False
     )
 
 
-    # Back side
-    # translation + explanation
+
+    # Translation + explanation
+    # Example:
+    # decision
+    # A choice made after thinking carefully.
     back = Column(
         Text
     )
 
 
+
+    # learning status
+    # learning / mastered
     status = Column(
         String(32),
-        default="learning"
+        default="learning",
+        nullable=False
     )
+
+
+
+    # Every 100 words = one flashcard set
+    #
+    # Example:
+    #
+    # set 1:
+    # word 1-100
+    #
+    # set 2:
+    # word 101-200
+    #
+    set_number = Column(
+        Integer,
+        default=1,
+        nullable=False,
+        index=True
+    )
+
+
+
+    # Keep insertion order
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        nullable=False
+    )
+
 
 
     vocabulary_id = Column(
@@ -651,12 +692,11 @@ class FlashcardDB(Base):
     )
 
 
+
     vocabulary = relationship(
         "VocabularyDB",
         back_populates="flashcards"
     )
-
-
 
 
 

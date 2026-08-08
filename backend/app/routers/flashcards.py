@@ -1,16 +1,21 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Query
+)
+
 from pydantic import BaseModel
 
 from ..db import SessionLocal
 
 from ..models_db import (
-    FlashcardDB,
-    VocabularyDB,
-    VocabularyTranslationDB
+    FlashcardDB
 )
 
 
 router = APIRouter()
+
+
 
 
 
@@ -21,13 +26,10 @@ router = APIRouter()
 # =====================================================
 
 
-class FlashcardCreate(BaseModel):
+class FlashcardUpdateRequest(BaseModel):
 
-    vocabulary_id: int | None = None
+    status: str
 
-    front: str | None = None
-
-    back: str | None = None
 
 
 
@@ -35,290 +37,54 @@ class FlashcardCreate(BaseModel):
 
 
 # =====================================================
-# Create Flashcard
+# GET /flashcards
 # =====================================================
-
-
-@router.post("")
-def create_flashcard(
-    body: FlashcardCreate
-):
-
-
-    session = SessionLocal()
-
-
-    try:
-
-
-        front = body.front
-
-        back = body.back
-
-
-
-        # =================================================
-        # Create from vocabulary
-        # =================================================
-
-        if body.vocabulary_id:
-
-
-            vocabulary = (
-
-                session.query(
-                    VocabularyDB
-                )
-
-                .filter(
-                    VocabularyDB.id
-                    ==
-                    body.vocabulary_id
-                )
-
-                .first()
-
-            )
-
-
-            if not vocabulary:
-
-
-                raise HTTPException(
-
-                    404,
-
-                    "Vocabulary not found"
-
-                )
-
-
-
-            # duplicate check
-
-            existing = (
-
-                session.query(
-                    FlashcardDB
-                )
-
-                .filter(
-                    FlashcardDB.vocabulary_id
-                    ==
-                    vocabulary.id
-                )
-
-                .first()
-
-            )
-
-
-            if existing:
-
-
-                return {
-
-                    "message":
-                        "already exists",
-
-                    "id":
-                        existing.id
-
-                }
-
-
-
-
-            front = vocabulary.word
-
-
-
-            translation = (
-
-                session.query(
-                    VocabularyTranslationDB
-                )
-
-                .filter(
-                    VocabularyTranslationDB.vocabulary_id
-                    ==
-                    vocabulary.id
-                )
-
-                .filter(
-                    VocabularyTranslationDB.language
-                    ==
-                    "en"
-                )
-
-                .first()
-
-            )
-
-
-
-            if translation:
-
-                back = translation.translation
-
-
-
-            else:
-
-                back = ""
-
-
-
-
-
-        # =================================================
-        # Manual creation
-        # =================================================
-
-
-        if not front:
-
-
-            raise HTTPException(
-
-                400,
-
-                "front is required"
-
-            )
-
-
-
-        if back is None:
-
-            back = ""
-
-
-
-
-        card = FlashcardDB(
-
-            front=front,
-
-            back=back,
-
-            vocabulary_id=
-                body.vocabulary_id,
-
-            status="learning"
-
-        )
-
-
-        session.add(
-            card
-        )
-
-
-        session.commit()
-
-
-        session.refresh(
-            card
-        )
-
-
-
-        return {
-
-
-            "message":
-                "created",
-
-
-            "id":
-                card.id,
-
-
-            "front":
-                card.front,
-
-
-            "back":
-                card.back
-
-        }
-
-
-
-    finally:
-
-        session.close()
-
-
-
-
-
-
-
-# =====================================================
-# Generate flashcard from vocabulary
-# =====================================================
-
-
-@router.post(
-    "/from-vocabulary/{vocabulary_id}"
-)
-def create_from_vocabulary(
-    vocabulary_id:int
-):
-
-
-    return create_flashcard(
-
-        FlashcardCreate(
-
-            vocabulary_id=vocabulary_id
-
-        )
-
-    )
-
-
-
-
-
-
-
-# =====================================================
-# Get all flashcards
-# =====================================================
-
 
 @router.get("")
-def list_flashcards():
+def get_flashcards(
+
+    set_number: int = Query(
+        default=1
+    )
+
+):
 
 
     session = SessionLocal()
 
 
+
     try:
 
 
-        cards = (
+        cards = session.query(
 
-            session.query(
-                FlashcardDB
-            )
+            FlashcardDB
 
-            .order_by(
-                FlashcardDB.id.desc()
-            )
+        ).filter(
 
-            .all()
 
-        )
+            FlashcardDB.set_number
+            ==
+            set_number
+
+
+        ).order_by(
+
+            FlashcardDB.created_at.asc()
+
+        ).all()
+
+
+
 
 
 
         return [
 
+
             {
+
 
                 "id":
                     card.id,
@@ -336,12 +102,19 @@ def list_flashcards():
                     card.status,
 
 
+                "set_number":
+                    card.set_number,
+
+
                 "vocabulary_id":
                     card.vocabulary_id
 
+
             }
 
+
             for card in cards
+
 
         ]
 
@@ -349,6 +122,7 @@ def list_flashcards():
 
     finally:
 
+
         session.close()
 
 
@@ -358,37 +132,99 @@ def list_flashcards():
 
 
 # =====================================================
-# Get one flashcard
+# GET flashcard sets
 # =====================================================
 
+@router.get("/sets")
+def get_flashcard_sets():
 
-@router.get("/{card_id}")
-def get_flashcard(
-    card_id:int
+
+    session = SessionLocal()
+
+
+
+    try:
+
+
+        result = session.query(
+
+            FlashcardDB.set_number
+
+        ).distinct().order_by(
+
+            FlashcardDB.set_number.asc()
+
+        ).all()
+
+
+
+
+
+        return [
+
+
+            {
+
+
+                "set_number":
+                    item[0]
+
+
+            }
+
+
+            for item in result
+
+
+        ]
+
+
+
+    finally:
+
+
+        session.close()
+
+
+
+
+
+
+
+# =====================================================
+# PUT /flashcards/{id}
+# =====================================================
+
+@router.put("/{flashcard_id}")
+def update_flashcard(
+
+    flashcard_id:int,
+
+    req:FlashcardUpdateRequest
+
 ):
 
 
     session = SessionLocal()
 
 
+
     try:
 
 
-        card = (
+        card = session.query(
 
-            session.query(
-                FlashcardDB
-            )
+            FlashcardDB
 
-            .filter(
-                FlashcardDB.id
-                ==
-                card_id
-            )
+        ).filter(
 
-            .first()
+            FlashcardDB.id
+            ==
+            flashcard_id
 
-        )
+        ).first()
+
+
 
 
         if not card:
@@ -396,123 +232,43 @@ def get_flashcard(
 
             raise HTTPException(
 
-                404,
+                status_code=404,
 
-                "flashcard not found"
+                detail="Flashcard not found"
 
             )
 
 
 
+
+
+
+        card.status = req.status
+
+
+
+        session.commit()
+
+
+
         return {
+
 
             "id":
                 card.id,
 
-            "front":
-                card.front,
-
-            "back":
-                card.back,
-
-            "status":
-                card.status,
-
-            "vocabulary_id":
-                card.vocabulary_id
-
-        }
-
-
-
-    finally:
-
-        session.close()
-
-
-
-
-
-
-
-# =====================================================
-# Update learning status
-# =====================================================
-
-
-class FlashcardStatusUpdate(BaseModel):
-
-    status: str
-
-
-
-
-
-
-@router.patch("/{card_id}")
-def update_status(
-    card_id:int,
-    body:FlashcardStatusUpdate
-):
-
-
-    session = SessionLocal()
-
-
-    try:
-
-
-        card = (
-
-            session.query(
-                FlashcardDB
-            )
-
-            .filter(
-                FlashcardDB.id
-                ==
-                card_id
-            )
-
-            .first()
-
-        )
-
-
-
-        if not card:
-
-
-            raise HTTPException(
-
-                404,
-
-                "flashcard not found"
-
-            )
-
-
-
-        card.status = body.status
-
-
-        session.commit()
-
-
-
-        return {
-
-            "message":
-                "updated",
 
             "status":
                 card.status
 
+
         }
 
 
 
+
     finally:
+
 
         session.close()
 
@@ -523,37 +279,36 @@ def update_status(
 
 
 # =====================================================
-# Delete flashcard
+# DELETE
 # =====================================================
 
-
-@router.delete("/{card_id}")
+@router.delete("/{flashcard_id}")
 def delete_flashcard(
-    card_id:int
+
+    flashcard_id:int
+
 ):
 
 
     session = SessionLocal()
 
 
+
     try:
 
 
-        card = (
+        card = session.query(
 
-            session.query(
-                FlashcardDB
-            )
+            FlashcardDB
 
-            .filter(
-                FlashcardDB.id
-                ==
-                card_id
-            )
+        ).filter(
 
-            .first()
+            FlashcardDB.id
+            ==
+            flashcard_id
 
-        )
+        ).first()
+
 
 
 
@@ -562,17 +317,16 @@ def delete_flashcard(
 
             raise HTTPException(
 
-                404,
+                status_code=404,
 
-                "flashcard not found"
+                detail="Flashcard not found"
 
             )
 
 
 
-        session.delete(
-            card
-        )
+
+        session.delete(card)
 
 
         session.commit()
@@ -580,6 +334,7 @@ def delete_flashcard(
 
 
         return {
+
 
             "message":
                 "deleted"
@@ -589,5 +344,6 @@ def delete_flashcard(
 
 
     finally:
+
 
         session.close()
