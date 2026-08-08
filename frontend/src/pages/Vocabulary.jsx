@@ -3,7 +3,9 @@ import {
     useState
 } from "react";
 
+
 import api from "../api/axios";
+
 
 
 function Vocabulary(){
@@ -13,15 +15,22 @@ function Vocabulary(){
 
 
 
-    useEffect(()=>{
+
+    async function loadVocabulary(){
 
 
-        api.get("/vocabulary")
-
-        .then(res=>{
+        try{
 
 
-            console.log(res.data);
+            const res = await api.get(
+                "/vocabulary"
+            );
+
+
+            console.log(
+                "VOCABULARY:",
+                res.data
+            );
 
 
             setWords(
@@ -29,18 +38,38 @@ function Vocabulary(){
             );
 
 
-        })
 
-        .catch(err=>{
-
-
-            console.error(err);
+        }catch(error){
 
 
-        });
+            console.error(
+                error
+            );
+
+
+        }
+
+
+    }
+
+
+
+
+
+
+
+    useEffect(()=>{
+
+
+        loadVocabulary();
+
 
 
     },[]);
+
+
+
+
 
 
 
@@ -56,6 +85,7 @@ function Vocabulary(){
 
 
 
+
             {
                 words.length === 0 && (
 
@@ -68,35 +98,158 @@ function Vocabulary(){
 
 
 
+
+
+
             {
                 words.map(
                     word=>(
 
 
                     <div
+
                     key={word.id}
+
                     style={{
-                        border:"1px solid gray",
-                        padding:"10px",
-                        margin:"10px"
+
+                        border:"1px solid #ccc",
+
+                        padding:"15px",
+
+                        marginBottom:"15px",
+
+                        borderRadius:"8px"
+
                     }}
+
                     >
 
 
-                        <h3>
+
+                        <h2>
+
                             {word.word}
-                        </h3>
+
+                        </h2>
+
+
+
 
 
                         <p>
-                            {word.definition}
+
+                            <b>
+                                Lemma:
+                            </b>
+
+                            {" "}
+
+                            {word.lemma || "-"}
+
                         </p>
+
+
+
 
 
                         <p>
-                            CEFR:
-                            {word.cefr}
+
+                            <b>
+                                Definition:
+                            </b>
+
+                            {" "}
+
+                            {word.definition || "-"}
+
                         </p>
+
+
+
+
+
+
+                        <p>
+
+                            <b>
+                                Translation:
+                            </b>
+
+                            {" "}
+
+                            {word.translation || "-"}
+
+                        </p>
+
+
+
+
+
+
+                        <p>
+
+                            <b>
+                                CEFR:
+                            </b>
+
+                            {" "}
+
+                            {word.cefr || "-"}
+
+                        </p>
+
+
+
+
+
+
+                        <p>
+
+                            <b>
+                                POS:
+                            </b>
+
+                            {" "}
+
+                            {word.pos || "-"}
+
+                        </p>
+
+
+
+
+
+
+                        <p>
+
+                            <b>
+                                Language:
+                            </b>
+
+                            {" "}
+
+                            {word.language || "-"}
+
+                        </p>
+
+
+
+
+
+
+                        <p>
+
+                            <b>
+                                Status:
+                            </b>
+
+                            {" "}
+
+                            {word.status || "-"}
+
+                        </p>
+
+
 
 
                     </div>
@@ -112,6 +265,7 @@ function Vocabulary(){
         </div>
 
     );
+
 
 }
 

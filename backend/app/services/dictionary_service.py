@@ -61,14 +61,19 @@ def _database_lookup(
 
 
 
+
         translations = {}
 
 
-        for t in entry.translations:
+
+        for item in entry.translations:
+
 
             translations[
-                t.language
-            ] = t.translation
+                item.language
+            ] = item.translation
+
+
 
 
 
@@ -91,6 +96,10 @@ def _database_lookup(
                 entry.pos,
 
 
+            "definition":
+                entry.definition,
+
+
             "cefr":
                 entry.cefr,
 
@@ -100,7 +109,9 @@ def _database_lookup(
 
 
             "examples":
-                json.loads(entry.examples)
+                json.loads(
+                    entry.examples
+                )
                 if entry.examples
                 else [],
 
@@ -123,7 +134,7 @@ def _database_lookup(
 
 
 # =====================================================
-# Gemini dictionary lookup
+# AI dictionary lookup
 # =====================================================
 
 def _ai_dictionary_lookup(
@@ -137,7 +148,7 @@ def _ai_dictionary_lookup(
 
 
     prompt = f"""
-You are a professional dictionary.
+You are a professional bilingual dictionary.
 
 Create a dictionary entry.
 
@@ -148,31 +159,32 @@ Language:
 {language}
 
 
-Return ONLY valid JSON.
+Return ONLY JSON.
 
 Format:
 
 {{
- "word":"",
- "lemma":"",
- "language":"",
- "pos":"",
- "cefr":"",
- "ipa":"",
- "examples":[],
- "translations": {{
-     "en":""
- }},
- "definition":""
+    "word": "",
+    "lemma": "",
+    "language": "",
+    "pos": "",
+    "definition": "",
+    "cefr": "",
+    "ipa": "",
+    "examples": [],
+    "translations": {{
+        "en": ""
+    }}
 }}
+
 
 Requirements:
 
-- If German word, explain German meaning.
-- Provide English translation.
+- Explain the meaning in English.
+- Provide the original language examples.
 - Provide CEFR level.
-- Provide IPA if possible.
-- Examples must be in original language.
+- Provide IPA if available.
+- Keep the explanation concise.
 """
 
 
@@ -186,12 +198,9 @@ Requirements:
     try:
 
 
-        data = json.loads(
+        return json.loads(
             response
         )
-
-
-        return data
 
 
 
@@ -199,7 +208,7 @@ Requirements:
 
 
         print(
-            "[DICTIONARY AI ERROR]",
+            "[DICTIONARY JSON ERROR]",
             e
         )
 
@@ -222,17 +231,19 @@ Requirements:
 # =====================================================
 
 def _save_dictionary_entry(
-    data:dict
+    data: dict
 ):
 
 
     session = SessionLocal()
 
 
+
     try:
 
 
-        exists = session.query(
+
+        existing = session.query(
             DictionaryEntryDB
         ).filter(
             DictionaryEntryDB.word == data["word"],
@@ -241,7 +252,7 @@ def _save_dictionary_entry(
 
 
 
-        if exists:
+        if existing:
 
             return
 
@@ -266,6 +277,11 @@ def _save_dictionary_entry(
 
             pos=data.get(
                 "pos"
+            ),
+
+
+            definition=data.get(
+                "definition"
             ),
 
 
@@ -303,10 +319,16 @@ def _save_dictionary_entry(
 
 
 
-        for lang, text in data.get(
+
+
+        translations = data.get(
             "translations",
             {}
-        ).items():
+        )
+
+
+
+        for language, translation in translations.items():
 
 
             session.add(
@@ -316,10 +338,10 @@ def _save_dictionary_entry(
                     dictionary_id=entry.id,
 
 
-                    language=lang,
+                    language=language,
 
 
-                    translation=text
+                    translation=translation
 
                 )
 
@@ -331,10 +353,17 @@ def _save_dictionary_entry(
 
 
 
-    except Exception:
+    except Exception as e:
 
 
         session.rollback()
+
+
+        print(
+            "[SAVE DICTIONARY ERROR]",
+            e
+        )
+
 
         raise
 
@@ -351,25 +380,41 @@ def _save_dictionary_entry(
 
 
 # =====================================================
-# Public lookup
+# Public API
 # =====================================================
 
 def lookup_word(
-    word:str,
-    language:str="de"
-):
+    word: str,
+    language: str = "de"
+) -> Optional[dict]:
 
 
-    word = word.strip().lower()
+    word = (
+        word
+        .strip()
+        .lower()
+    )
+
+
+
+    if not word:
+
+        return None
+
+
 
 
 
     # 1. database
 
     result = _database_lookup(
+
         word,
+
         language
+
     )
+
 
 
     if result:
@@ -380,7 +425,8 @@ def lookup_word(
 
 
 
-    # 2. AI dictionary
+
+    # 2. Gemini dictionary
 
     result = _ai_dictionary_lookup(
 
@@ -396,7 +442,9 @@ def lookup_word(
 
 
         _save_dictionary_entry(
+
             result
+
         )
 
 
@@ -415,31 +463,34 @@ def lookup_word(
 
 
 # =====================================================
-# Batch
+# Batch lookup
 # =====================================================
 
 def lookup_words(
-    words:List[str],
-    language:str="de"
+    words: List[str],
+    language: str = "de"
 ):
 
 
-    result={}
+    result = {}
 
 
 
     for word in words:
 
 
-        data = lookup_word(
+        item = lookup_word(
+
             word,
+
             language
+
         )
 
 
-        if data:
+        if item:
 
-            result[word]=data
+            result[word] = item
 
 
 
