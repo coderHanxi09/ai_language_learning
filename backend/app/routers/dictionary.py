@@ -1,10 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-
 from ..services.dictionary_service import (
     lookup_word
 )
-
 
 
 router = APIRouter()
@@ -13,10 +11,11 @@ router = APIRouter()
 
 
 
-
 # =====================================================
 # GET dictionary word
+# GET /dictionary/{word}?language=de
 # =====================================================
+
 
 @router.get("/{word}")
 def get_dictionary_word(
@@ -24,10 +23,6 @@ def get_dictionary_word(
     language: str = "de"
 ):
 
-
-    # =========================
-    # Normalize input
-    # =========================
 
     normalized_word = (
         word
@@ -52,10 +47,6 @@ def get_dictionary_word(
 
 
 
-    # =========================
-    # Lookup
-    # =========================
-
     result = lookup_word(
 
         normalized_word,
@@ -67,10 +58,6 @@ def get_dictionary_word(
 
 
 
-
-    # =========================
-    # Not found
-    # =========================
 
     if not result:
 
@@ -89,16 +76,13 @@ def get_dictionary_word(
             "message":
                 "Word not found"
 
+
         }
 
 
 
 
 
-
-    # =========================
-    # Success
-    # =========================
 
     return {
 
@@ -113,5 +97,6 @@ def get_dictionary_word(
 
         "data":
             result
+
 
     }
