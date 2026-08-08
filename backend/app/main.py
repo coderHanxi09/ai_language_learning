@@ -15,6 +15,7 @@ from .routers import (
     flashcards,
     auth,
     readings,
+    writing,
 )
 
 
@@ -573,7 +574,15 @@ app.include_router(
 
 )
 
+app.include_router(
 
+    writing.router,
+
+    prefix="/writing",
+
+    tags=["Writing"]
+
+)
 
 app.include_router(
 
