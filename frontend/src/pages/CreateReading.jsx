@@ -1,13 +1,28 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {
+    useState
+} from "react";
 
 
-function CreateReading() {
+import {
+    useNavigate
+} from "react-router-dom";
 
 
-    const [content, setContent] = useState("");
+import api from "../api/axios";
+
+
+
+function CreateReading(){
+
+
+    const [content,setContent]
+        = useState("");
+
+
 
     const navigate = useNavigate();
+
+
 
 
 
@@ -16,9 +31,11 @@ function CreateReading() {
 
         if(!content.trim()){
 
+
             alert(
                 "Please enter text"
             );
+
 
             return;
 
@@ -26,47 +43,29 @@ function CreateReading() {
 
 
 
+
         try{
 
 
-            const response = await fetch(
+            const res = await api.post(
 
-                "http://127.0.0.1:8000/readings",
+                "/readings",
 
                 {
 
-                    method:"POST",
-
-                    headers:{
-
-                        "Content-Type":
-                            "application/json"
-
-                    },
+                    title:null,
 
 
-                    body:JSON.stringify({
-
-                        title:
-                            "Imported Reading",
+                    content:content,
 
 
-                        content:
-                            content,
+                    source_language:"de",
 
 
-                        source_language:
-                            "de",
+                    translation_language:"en",
 
 
-                        translation_language:
-                            "en",
-
-
-                        difficulty:
-                            "B2"
-
-                    })
+                    difficulty:"B2"
 
                 }
 
@@ -74,40 +73,23 @@ function CreateReading() {
 
 
 
-            const data =
-                await response.json();
-
-
 
             console.log(
-                "Create reading response:",
-                data
+                "CREATE READING:",
+                res.data
             );
 
 
-
-            const readingId =
-                data.id;
-
-
-
-            if(!readingId){
-
-
-                alert(
-                    "No reading id returned"
-                );
-
-
-                return;
-
-            }
 
 
 
             navigate(
-                `/readings/${readingId}`
+
+                `/readings/${res.data.id}`
+
             );
+
+
 
 
 
@@ -123,10 +105,12 @@ function CreateReading() {
                 "Failed to create reading"
             );
 
+
         }
 
 
     }
+
 
 
 
@@ -145,20 +129,26 @@ function CreateReading() {
 
             <textarea
 
-                rows="10"
+                rows="15"
 
-                cols="80"
+                style={{
 
-                placeholder="Paste German text here..."
+                    width:"100%",
+
+                    maxWidth:"900px"
+
+                }}
+
+                placeholder="Paste your German article here..."
 
                 value={content}
 
                 onChange={
-                    e =>
-                    setContent(
+                    e=>setContent(
                         e.target.value
                     )
                 }
+
 
             />
 
@@ -166,10 +156,10 @@ function CreateReading() {
 
             <br/>
 
-
-
             <button
+
                 onClick={handleSubmit}
+
             >
 
                 Start Learning
@@ -177,12 +167,13 @@ function CreateReading() {
             </button>
 
 
+
         </div>
 
     );
 
-
 }
+
 
 
 export default CreateReading;

@@ -14,6 +14,10 @@ function Vocabulary(){
     const [words,setWords] = useState([]);
 
 
+    const [loading,setLoading] = useState(true);
+
+
+
 
 
     async function loadVocabulary(){
@@ -33,6 +37,7 @@ function Vocabulary(){
             );
 
 
+
             setWords(
                 res.data
             );
@@ -43,8 +48,15 @@ function Vocabulary(){
 
 
             console.error(
+                "Vocabulary error:",
                 error
             );
+
+
+        }finally{
+
+
+            setLoading(false);
 
 
         }
@@ -58,11 +70,11 @@ function Vocabulary(){
 
 
 
+
     useEffect(()=>{
 
 
         loadVocabulary();
-
 
 
     },[]);
@@ -74,9 +86,45 @@ function Vocabulary(){
 
 
 
+
+    if(loading){
+
+
+        return (
+
+            <h2>
+                Loading vocabulary...
+            </h2>
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
     return (
 
-        <div>
+        <div
+
+        style={{
+
+            maxWidth:"900px",
+
+            margin:"0 auto",
+
+            padding:"20px"
+
+        }}
+
+        >
+
 
 
             <h1>
@@ -86,15 +134,21 @@ function Vocabulary(){
 
 
 
+
+
             {
                 words.length === 0 && (
+
 
                     <p>
                         No vocabulary yet.
                     </p>
 
+
                 )
+
             }
+
 
 
 
@@ -102,172 +156,196 @@ function Vocabulary(){
 
 
             {
-                words.map(
-                    word=>(
 
+            words.map(
 
-                    <div
+                word => (
 
-                    key={word.id}
 
-                    style={{
 
-                        border:"1px solid #ccc",
+                <div
 
-                        padding:"15px",
+                key={word.id}
 
-                        marginBottom:"15px",
 
-                        borderRadius:"8px"
+                style={{
 
-                    }}
+                    border:"1px solid #ddd",
 
-                    >
+                    borderRadius:"10px",
 
+                    padding:"20px",
 
+                    marginBottom:"20px",
 
-                        <h2>
+                    background:"#fff"
 
-                            {word.word}
+                }}
 
-                        </h2>
 
 
+                >
 
 
 
-                        <p>
+                    <h2>
 
-                            <b>
-                                Lemma:
-                            </b>
+                        {word.word}
 
-                            {" "}
+                    </h2>
 
-                            {word.lemma || "-"}
 
-                        </p>
 
 
 
+                    <p>
 
+                        <b>
+                            Lemma:
+                        </b>
 
-                        <p>
+                        {" "}
 
-                            <b>
-                                Definition:
-                            </b>
+                        {word.lemma || "-"}
 
-                            {" "}
+                    </p>
 
-                            {word.definition || "-"}
 
-                        </p>
 
 
 
 
+                    <p>
 
+                        <b>
+                            Definition:
+                        </b>
 
-                        <p>
 
-                            <b>
-                                Translation:
-                            </b>
+                        <br/>
 
-                            {" "}
 
-                            {word.translation || "-"}
+                        {
 
-                        </p>
+                            word.definition ||
 
+                            "-"
 
+                        }
 
 
+                    </p>
 
 
-                        <p>
 
-                            <b>
-                                CEFR:
-                            </b>
 
-                            {" "}
 
-                            {word.cefr || "-"}
 
-                        </p>
 
+                    <p>
 
+                        <b>
+                            Translation:
+                        </b>
 
 
+                        <br/>
 
 
-                        <p>
+                        {
 
-                            <b>
-                                POS:
-                            </b>
+                            word.translation ||
 
-                            {" "}
+                            "-"
 
-                            {word.pos || "-"}
+                        }
 
-                        </p>
 
+                    </p>
 
 
 
 
 
-                        <p>
 
-                            <b>
-                                Language:
-                            </b>
 
-                            {" "}
 
-                            {word.language || "-"}
+                    <p>
 
-                        </p>
+                        <b>
+                            CEFR:
+                        </b>
 
 
+                        {" "}
 
 
+                        {
 
+                            word.cefr ||
 
-                        <p>
+                            "-"
 
-                            <b>
-                                Status:
-                            </b>
+                        }
 
-                            {" "}
 
-                            {word.status || "-"}
+                    </p>
 
-                        </p>
 
 
 
 
-                    </div>
 
 
-                    )
+                    <p>
+
+                        <b>
+                            POS:
+                        </b>
+
+
+                        {" "}
+
+
+                        {
+
+                            word.pos ||
+
+                            "-"
+
+                        }
+
+
+                    </p>
+
+
+
+
+
+
+
+                </div>
+
 
                 )
+
+
+            )
+
             }
+
+
 
 
 
         </div>
 
+
     );
 
 
 }
+
 
 
 export default Vocabulary;

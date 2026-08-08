@@ -1,5 +1,4 @@
 import json
-import re
 from typing import Optional, List
 
 
@@ -10,6 +9,7 @@ from ..models_db import (
     DictionaryTranslationDB
 )
 
+from .word_token_service import normalize_word
 
 from ..ai.factory import get_ai_provider
 
@@ -22,77 +22,74 @@ from ..ai.factory import get_ai_provider
 # =====================================================
 
 
-def _normalize_language(language: str):
+def _parse_examples(
+    examples
+):
+
+    if not examples:
+
+        return []
+
+
+    if isinstance(
+        examples,
+        list
+    ):
+
+        return examples
+
+
+    try:
+
+        return json.loads(
+            examples
+        )
+
+    except:
+
+        return []
+
+
+
+
+
+
+
+def _normalize_language(
+    language:str
+):
 
     if not language:
+
         return "de"
+
 
 
     language = language.lower()
 
 
+
     mapping = {
 
-        "german": "de",
+        "german":"de",
 
-        "deutsch": "de",
+        "deutsch":"de",
 
-        "english": "en",
+        "english":"en",
 
-        "englisch": "en"
+        "englisch":"en"
 
     }
 
 
+
     return mapping.get(
+
         language,
+
         language
+
     )
-
-
-
-
-
-def _parse_json_response(text: str):
-
-    """
-    Extract JSON from AI response
-    """
-
-
-    try:
-
-        return json.loads(text)
-
-
-    except Exception:
-
-        pass
-
-
-
-    match = re.search(
-        r"\{.*\}",
-        text,
-        re.DOTALL
-    )
-
-
-    if match:
-
-        try:
-
-            return json.loads(
-                match.group()
-            )
-
-        except Exception:
-
-            return None
-
-
-
-    return None
 
 
 
@@ -106,8 +103,8 @@ def _parse_json_response(text: str):
 
 
 def _database_lookup(
-    word: str,
-    language: str
+    word:str,
+    language:str
 ):
 
 
@@ -118,14 +115,18 @@ def _database_lookup(
 
 
         entry = session.query(
+
             DictionaryEntryDB
+
         ).filter(
 
-            DictionaryEntryDB.language == language,
+            DictionaryEntryDB.lemma.ilike(word),
 
-            DictionaryEntryDB.lemma.ilike(word)
+            DictionaryEntryDB.language == language
 
         ).first()
+
+
 
 
 
@@ -133,14 +134,18 @@ def _database_lookup(
 
 
             entry = session.query(
+
                 DictionaryEntryDB
+
             ).filter(
 
-                DictionaryEntryDB.language == language,
+                DictionaryEntryDB.word.ilike(word),
 
-                DictionaryEntryDB.word.ilike(word)
+                DictionaryEntryDB.language == language
 
             ).first()
+
+
 
 
 
@@ -152,22 +157,27 @@ def _database_lookup(
 
 
 
-        translations = {}
+        translations={}
 
 
 
-        for item in entry.translations:
+        for t in entry.translations:
 
 
             translations[
-                item.language
-            ] = item.translation
+                t.language
+            ] = t.translation
+
 
 
 
 
 
         return {
+
+
+            "id":
+                entry.id,
 
 
             "word":
@@ -182,6 +192,10 @@ def _database_lookup(
                 entry.language,
 
 
+            "definition":
+                entry.definition,
+
+
             "pos":
                 entry.pos,
 
@@ -194,26 +208,17 @@ def _database_lookup(
                 entry.ipa,
 
 
-            "definition":
-                entry.definition,
-
-
             "examples":
-                json.loads(
+                _parse_examples(
                     entry.examples
-                )
-                if entry.examples
-                else [],
+                ),
 
 
-
-            "translation":
-
-                translations.get(
-                    "en"
-                )
+            "translations":
+                translations
 
         }
+
 
 
 
@@ -232,9 +237,9 @@ def _database_lookup(
 # =====================================================
 
 
-def _generate_dictionary(
-    word: str,
-    language: str
+def _generate_with_ai(
+    word:str,
+    language:str
 ):
 
 
@@ -246,7 +251,7 @@ def _generate_dictionary(
 
 You are a professional dictionary.
 
-Create a dictionary entry for this word:
+Create a dictionary entry for:
 
 Word:
 {word}
@@ -255,19 +260,16 @@ Language:
 {language}
 
 
-Return ONLY JSON.
-
-Format:
+Return ONLY valid JSON:
 
 {{
  "word":"",
  "lemma":"",
- "language":"",
+ "definition":"",
+ "translation":"",
  "pos":"",
  "cefr":"",
  "ipa":"",
- "definition":"",
- "translation":"",
  "examples":[]
 }}
 
@@ -275,33 +277,100 @@ Rules:
 
 - definition must be in English
 - translation must be English
-- CEFR level should be A1-C2
-- examples should be real sentences
-- no markdown
+- CEFR level A1-C2
+- For German words provide German lemma
+- Provide one example sentence
 
 """
 
 
 
-    response = provider.generate(
+    result = provider.generate(
         prompt
     )
 
 
 
-    data = _parse_json_response(
-        response
-    )
+    try:
 
+        data=json.loads(
+            result
+        )
 
+    except Exception:
 
-    if not data:
 
         return None
 
 
 
-    return data
+
+    return {
+
+
+        "word":
+            data.get(
+                "word",
+                word
+            ),
+
+
+        "lemma":
+            data.get(
+                "lemma",
+                word
+            ),
+
+
+        "language":
+            language,
+
+
+        "definition":
+            data.get(
+                "definition"
+            ),
+
+
+        "pos":
+            data.get(
+                "pos"
+            ),
+
+
+        "cefr":
+            data.get(
+                "cefr"
+            ),
+
+
+        "ipa":
+            data.get(
+                "ipa"
+            ),
+
+
+        "examples":
+            data.get(
+                "examples",
+                []
+            ),
+
+
+        "translations":
+
+            {
+
+                "en":
+
+                data.get(
+                    "translation"
+                )
+
+            }
+
+
+    }
 
 
 
@@ -314,25 +383,30 @@ Rules:
 # =====================================================
 
 
-def _save_dictionary(
-    data: dict
+def _save_dictionary_entry(
+    data:dict
 ):
 
 
-    session = SessionLocal()
+    session=SessionLocal()
+
 
 
     try:
 
 
+        existing=session.query(
 
-        existing = session.query(
             DictionaryEntryDB
+
         ).filter(
 
-            DictionaryEntryDB.lemma == data["lemma"],
+            DictionaryEntryDB.lemma ==
+            data["lemma"],
 
-            DictionaryEntryDB.language == data["language"]
+
+            DictionaryEntryDB.language ==
+            data["language"]
 
         ).first()
 
@@ -346,7 +420,7 @@ def _save_dictionary(
 
 
 
-        entry = DictionaryEntryDB(
+        entry=DictionaryEntryDB(
 
 
             word=data["word"],
@@ -356,6 +430,11 @@ def _save_dictionary(
 
 
             language=data["language"],
+
+
+            definition=data.get(
+                "definition"
+            ),
 
 
             pos=data.get(
@@ -373,11 +452,6 @@ def _save_dictionary(
             ),
 
 
-            definition=data.get(
-                "definition"
-            ),
-
-
             examples=json.dumps(
 
                 data.get(
@@ -389,13 +463,12 @@ def _save_dictionary(
 
             )
 
+
         )
 
 
 
-        session.add(
-            entry
-        )
+        session.add(entry)
 
 
         session.flush()
@@ -404,28 +477,33 @@ def _save_dictionary(
 
 
 
-        translation = data.get(
-            "translation"
-        )
+
+        for lang,text in data.get(
+
+            "translations",
+
+            {}
+
+        ).items():
 
 
 
-        if translation:
+            if text:
 
 
-            session.add(
+                session.add(
 
-                DictionaryTranslationDB(
+                    DictionaryTranslationDB(
 
-                    dictionary_id=entry.id,
+                        dictionary_id=entry.id,
 
-                    language="en",
+                        language=lang,
 
-                    translation=translation
+                        translation=text
+
+                    )
 
                 )
-
-            )
 
 
 
@@ -439,16 +517,9 @@ def _save_dictionary(
 
 
 
-    except Exception:
-
-
-        session.rollback()
-
-        raise
-
-
 
     finally:
+
 
         session.close()
 
@@ -459,18 +530,19 @@ def _save_dictionary(
 
 
 # =====================================================
-# Public lookup
+# Main lookup
 # =====================================================
 
 
 def lookup_word(
-    word: str,
-    language: str = "de"
+    word:str,
+    language:str="de"
 ):
 
 
-    word = word.strip()
-
+    language=_normalize_language(
+        language
+    )
 
 
     if not word:
@@ -479,17 +551,38 @@ def lookup_word(
 
 
 
-    language = _normalize_language(
-        language
-    )
+    word=word.strip()
+
+
+
+    # normalize lemma
+
+    try:
+
+        lemma=normalize_word(
+
+            word,
+
+            language
+
+        )
+
+    except:
+
+        lemma=word.lower()
+
+
 
 
 
     # 1. database
 
-    result = _database_lookup(
-        word,
+    result=_database_lookup(
+
+        lemma,
+
         language
+
     )
 
 
@@ -502,9 +595,9 @@ def lookup_word(
 
 
 
-    # 2. AI generate
+    # 2. AI generation
 
-    result = _generate_dictionary(
+    result=_generate_with_ai(
 
         word,
 
@@ -514,21 +607,21 @@ def lookup_word(
 
 
 
-    if not result:
-
-        return None
+    if result:
 
 
+        _save_dictionary_entry(
+            result
+        )
 
 
-
-    _save_dictionary(
-        result
-    )
+        return result
 
 
 
-    return result
+
+
+    return None
 
 
 
@@ -537,24 +630,24 @@ def lookup_word(
 
 
 # =====================================================
-# Batch lookup
+# Batch
 # =====================================================
 
 
 def lookup_words(
-    words: List[str],
-    language: str = "de"
+    words:List[str],
+    language:str="de"
 ):
 
 
-    result = {}
+    result={}
 
 
 
     for word in words:
 
 
-        item = lookup_word(
+        item=lookup_word(
 
             word,
 
@@ -565,7 +658,8 @@ def lookup_words(
 
         if item:
 
-            result[word] = item
+
+            result[word]=item
 
 
 

@@ -6,8 +6,11 @@ from ..db import SessionLocal
 
 from ..models_db import (
     VocabularyDB,
-    DictionaryEntryDB,
     VocabularyTranslationDB
+)
+
+from ..services.dictionary_service import (
+    lookup_word
 )
 
 
@@ -15,62 +18,128 @@ router = APIRouter()
 
 
 
-# =========================
-# Request Model
-# =========================
 
-class VocabularyCreate(BaseModel):
+
+# =====================================================
+# Request
+# =====================================================
+
+class VocabularyRequest(BaseModel):
 
     word: str
 
-    lemma: str
-
-    source_language: str = "de"
-
-    definition: str | None = None
-
-    cefr: str | None = None
-
-    ipa: str | None = None
-
-    translation: str | None = None
+    language: str = "de"
 
 
 
 
 
-# =========================
+
+
+
+
+# =====================================================
 # Add vocabulary
-# POST /vocabulary
-# =========================
+# =====================================================
 
 @router.post("")
 def add_vocabulary(
-    req: VocabularyCreate
+    req: VocabularyRequest
 ):
+
+
+    word = req.word.strip()
+
+
+    if not word:
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Word required"
+
+        )
+
+
+
+    # =================================================
+    # Always get dictionary information
+    # =================================================
+
+
+    dictionary = lookup_word(
+
+        word,
+
+        req.language
+
+    )
+
+
+
+    if not dictionary:
+
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Dictionary entry not found"
+
+        )
+
+
+
+
+
 
 
     session = SessionLocal()
 
 
+
     try:
 
 
+        lemma = dictionary.get(
+
+            "lemma",
+
+            word
+
+        )
+
+
+
+
+        # check duplicate
+
+
         existing = session.query(
+
             VocabularyDB
+
         ).filter(
-            VocabularyDB.lemma == req.lemma,
-            VocabularyDB.source_language == req.source_language
+
+            VocabularyDB.lemma == lemma,
+
+            VocabularyDB.source_language ==
+            dictionary["language"]
+
         ).first()
 
 
 
         if existing:
 
+
             return {
+
 
                 "message":
                     "Already exists",
+
 
                 "id":
                     existing.id
@@ -80,70 +149,115 @@ def add_vocabulary(
 
 
 
+
+
+
+
         vocab = VocabularyDB(
 
-            word=req.word,
 
-            lemma=req.lemma,
+            word=dictionary["word"],
 
-            source_language=req.source_language,
 
-            definition=req.definition,
+            lemma=lemma,
 
-            cefr=req.cefr,
 
-            ipa=req.ipa,
+            source_language=dictionary["language"],
+
+
+            dictionary_id=dictionary.get(
+                "id"
+            ),
+
+
+            cefr=dictionary.get(
+                "cefr"
+            ),
+
 
             source="reading"
+
 
         )
 
 
-        session.add(vocab)
+
+        session.add(
+            vocab
+        )
 
 
         session.flush()
 
 
 
-        if req.translation:
 
 
-            translation = VocabularyTranslationDB(
 
-                vocabulary_id=vocab.id,
-
-                language="en",
-
-                translation=req.translation
-
-            )
+        # ===============================
+        # Save translations
+        # ===============================
 
 
-            session.add(
-                translation
-            )
+        translations = dictionary.get(
+
+            "translations",
+
+            {}
+
+        )
+
+
+
+        for lang,text in translations.items():
+
+
+            if text:
+
+
+                session.add(
+
+                    VocabularyTranslationDB(
+
+                        vocabulary_id=vocab.id,
+
+                        language=lang,
+
+                        translation=text
+
+                    )
+
+                )
+
+
+
+
 
 
 
         session.commit()
 
 
-        session.refresh(
-            vocab
-        )
-
-
 
         return {
 
-            "id": vocab.id,
 
-            "word": vocab.word,
+            "message":
+                "Vocabulary added",
 
-            "lemma": vocab.lemma
+
+            "id":
+                vocab.id,
+
+
+            "word":
+                vocab.word
+
 
         }
+
+
+
 
 
 
@@ -152,11 +266,13 @@ def add_vocabulary(
 
         session.rollback()
 
+
         raise e
 
 
 
     finally:
+
 
         session.close()
 
@@ -164,9 +280,12 @@ def add_vocabulary(
 
 
 
-# =========================
-# GET vocabulary
-# =========================
+
+
+# =====================================================
+# Get vocabulary
+# =====================================================
+
 
 @router.get("")
 def get_vocabulary():
@@ -175,38 +294,105 @@ def get_vocabulary():
     session = SessionLocal()
 
 
+
     try:
 
 
         words = session.query(
+
             VocabularyDB
+
         ).all()
 
 
 
-        return [
 
-            {
+        result=[]
 
-                "id": w.id,
 
-                "word": w.word,
 
-                "lemma": w.lemma,
 
-                "definition": w.definition,
+        for word in words:
 
-                "cefr": w.cefr,
 
-                "language": w.source_language
 
-            }
+            translations={}
 
-            for w in words
 
-        ]
+
+            for t in word.translations:
+
+
+                translations[
+                    t.language
+                ] = t.translation
+
+
+
+
+
+            dictionary = word.dictionary
+
+
+
+
+            result.append({
+
+
+                "id":
+                    word.id,
+
+
+                "word":
+                    word.word,
+
+
+                "lemma":
+                    word.lemma,
+
+
+                "language":
+                    word.source_language,
+
+
+                "definition":
+
+                    dictionary.definition
+                    if dictionary
+                    else "",
+
+
+                "pos":
+
+                    dictionary.pos
+                    if dictionary
+                    else "",
+
+
+
+                "cefr":
+
+                    word.cefr,
+
+
+
+                "translation":
+
+                    translations.get(
+                        "en",
+                        ""
+                    )
+
+
+            })
+
+
+
+        return result
+
 
 
     finally:
+
 
         session.close()
