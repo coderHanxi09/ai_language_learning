@@ -69,7 +69,6 @@ function ReadingDetail(){
 
 
 
-
     useEffect(()=>{
 
 
@@ -85,14 +84,11 @@ function ReadingDetail(){
 
 
 
-
-            if(
-                status === "processing"
-            ){
+            if(status==="processing"){
 
 
-                timer = setInterval(
-                    async ()=>{
+                timer=setInterval(
+                    async()=>{
 
 
                         const newStatus =
@@ -104,11 +100,7 @@ function ReadingDetail(){
                             newStatus !== "processing"
                         ){
 
-
-                            clearInterval(
-                                timer
-                            );
-
+                            clearInterval(timer);
 
                         }
 
@@ -117,12 +109,10 @@ function ReadingDetail(){
                     3000
                 );
 
-
             }
 
 
         }
-
 
 
         start();
@@ -138,7 +128,6 @@ function ReadingDetail(){
 
             }
 
-
         };
 
 
@@ -152,9 +141,7 @@ function ReadingDetail(){
 
 
 
-    async function handleWordClick(
-        word
-    ){
+    async function handleWordClick(word){
 
 
         try{
@@ -192,9 +179,7 @@ function ReadingDetail(){
         }catch(error){
 
 
-            console.error(
-                error
-            );
+            console.error(error);
 
 
             setWordInfo(null);
@@ -216,14 +201,11 @@ function ReadingDetail(){
     async function addVocabulary(){
 
 
-        if(
-            !wordInfo?.data
-        ){
+        if(!wordInfo?.data){
 
             return;
 
         }
-
 
 
 
@@ -276,13 +258,10 @@ function ReadingDetail(){
             );
 
 
-
         }catch(error){
 
 
-            console.error(
-                error
-            );
+            console.error(error);
 
 
             alert(
@@ -308,9 +287,13 @@ function ReadingDetail(){
 
         return (
 
-            <h2>
+            <div style={{
+                padding:"40px"
+            }}>
+
                 Loading...
-            </h2>
+
+            </div>
 
         );
 
@@ -321,10 +304,7 @@ function ReadingDetail(){
 
 
 
-
-    if(
-        data.status === "processing"
-    ){
+    if(data.status==="processing"){
 
 
         return (
@@ -340,16 +320,27 @@ function ReadingDetail(){
             >
 
                 <h1
+
                 style={{
-                    lineHeight:"1.5"
+
+                    lineHeight:"1.6",
+
+                    fontSize:"28px"
+
                 }}
+
                 >
+
                     Generating translation...
+
                 </h1>
 
 
+
                 <p>
+
                     AI is preparing your reading material.
+
                 </p>
 
 
@@ -369,7 +360,6 @@ function ReadingDetail(){
 
     return (
 
-
         <div
 
         style={{
@@ -382,7 +372,9 @@ function ReadingDetail(){
 
             margin:"0 auto",
 
-            padding:"30px"
+            padding:"30px",
+
+            alignItems:"flex-start"
 
         }}
 
@@ -391,18 +383,18 @@ function ReadingDetail(){
 
 
 
-            {/* =====================
-                Article Area
-            ====================== */}
+            {/* Article */}
 
 
-            <div
+            <main
 
             style={{
 
                 flex:1,
 
-                minWidth:0
+                minWidth:0,
+
+                overflowWrap:"break-word"
 
             }}
 
@@ -416,15 +408,11 @@ function ReadingDetail(){
 
                     fontSize:"32px",
 
-                    lineHeight:"1.4",
+                    lineHeight:"1.6",
 
-                    marginBottom:"10px",
+                    marginBottom:"20px",
 
-                    overflowWrap:
-                        "break-word",
-
-                    wordBreak:
-                        "break-word"
+                    fontWeight:"700"
 
                 }}
 
@@ -442,7 +430,9 @@ function ReadingDetail(){
 
                 style={{
 
-                    marginBottom:"30px"
+                    marginBottom:"30px",
+
+                    color:"#555"
 
                 }}
 
@@ -471,7 +461,7 @@ function ReadingDetail(){
                         sentence=>(
 
 
-                        <div
+                        <section
 
                         key={
                             sentence.id
@@ -484,9 +474,13 @@ function ReadingDetail(){
 
                         }}
 
-
                         >
 
+
+
+
+
+                            {/* original sentence */}
 
 
                             <div
@@ -497,15 +491,18 @@ function ReadingDetail(){
 
                                 flexWrap:"wrap",
 
-                                gap:"8px",
+                                gap:"6px",
 
                                 fontSize:"18px",
 
-                                lineHeight:"1.8"
+                                lineHeight:"2",
+
+                                textAlign:"left"
 
                             }}
 
                             >
+
 
 
                             {
@@ -516,9 +513,11 @@ function ReadingDetail(){
 
                                     <span
 
+
                                     key={
                                         word.id
                                     }
+
 
 
                                     onClick={()=>{
@@ -530,25 +529,35 @@ function ReadingDetail(){
                                     }}
 
 
+
                                     style={{
 
-                                        cursor:
-                                            "pointer",
+                                        cursor:"pointer",
 
-                                        padding:
-                                            "2px 3px",
+                                        padding:"3px 5px",
 
-                                        borderRadius:
-                                            "4px"
+                                        borderRadius:"5px",
+
+                                        background:
+
+                                            selectedWord ===
+                                            word.word.toLowerCase()
+
+                                            ?
+
+                                            "#fff3cd"
+
+                                            :
+
+                                            "transparent"
 
                                     }}
 
 
                                     >
 
-                                        {
-                                            word.word
-                                        }
+
+                                        {word.word}
 
 
                                     </span>
@@ -557,6 +566,7 @@ function ReadingDetail(){
                                     )
 
                                 )
+
                             }
 
 
@@ -566,31 +576,42 @@ function ReadingDetail(){
 
 
 
+
+
+
+                            {/* translation */}
+
+
                             <p
 
                             style={{
 
-                                marginTop:"10px",
+                                marginTop:"12px",
 
-                                color:"#555",
+                                marginBottom:"0",
+
+                                color:"#64748b",
 
                                 fontSize:"16px",
 
-                                lineHeight:"1.6"
+                                lineHeight:"1.8",
+
+                                textAlign:"left"
 
                             }}
 
                             >
 
-                                {
-                                    sentence.translation
-                                }
+                                {sentence.translation}
+
 
                             </p>
 
 
 
-                        </div>
+
+
+                        </section>
 
 
                         )
@@ -602,7 +623,7 @@ function ReadingDetail(){
 
 
 
-            </div>
+            </main>
 
 
 
@@ -612,15 +633,15 @@ function ReadingDetail(){
 
 
 
-            {/* =====================
-                Dictionary Sidebar
-            ====================== */}
+
+            {/* Dictionary */}
 
 
             {
                 wordInfo && (
 
-                <div
+
+                <aside
 
                 style={{
 
@@ -632,16 +653,16 @@ function ReadingDetail(){
 
                     top:"20px",
 
-                    height:"fit-content",
-
                     padding:"20px",
 
-                    border:
-                        "1px solid #ddd",
+                    border:"1px solid #ddd",
 
-                    borderRadius:"10px",
+                    borderRadius:"12px",
 
-                    background:"#fff"
+                    background:"#fff",
+
+                    boxShadow:
+                    "0 4px 12px rgba(0,0,0,0.08)"
 
                 }}
 
@@ -649,67 +670,63 @@ function ReadingDetail(){
 
 
 
-                    <h2>
+                    <h2
 
-                        {
-                            selectedWord
-                        }
+                    style={{
+
+                        marginTop:0
+
+                    }}
+
+                    >
+
+                        {selectedWord}
 
                     </h2>
+
+
 
 
 
                     {
                         wordInfo.found ?
 
+
                         <>
 
 
                         <p>
-                            Lemma:
-                            {" "}
-                            {
-                                wordInfo.data.lemma
-                            }
+                            <b>Lemma:</b>{" "}
+                            {wordInfo.data.lemma}
                         </p>
 
 
 
                         <p>
-                            POS:
-                            {" "}
-                            {
-                                wordInfo.data.pos || "-"
-                            }
+                            <b>POS:</b>{" "}
+                            {wordInfo.data.pos || "-"}
                         </p>
 
 
 
                         <p>
-                            CEFR:
-                            {" "}
-                            {
-                                wordInfo.data.cefr || "-"
-                            }
+                            <b>CEFR:</b>{" "}
+                            {wordInfo.data.cefr || "-"}
                         </p>
 
 
 
                         <p>
-                            Definition:
-                            {" "}
-                            {
-                                wordInfo.data.definition || "-"
-                            }
+                            <b>Definition:</b>{" "}
+                            {wordInfo.data.definition || "-"}
                         </p>
 
 
 
                         <p>
-                            Translation:
-                            {" "}
+                            <b>Translation:</b>{" "}
                             {
-                                wordInfo.data.translations?.en || "-"
+                            wordInfo.data.translations?.en || "-"
                             }
                         </p>
 
@@ -733,7 +750,6 @@ function ReadingDetail(){
 
                         :
 
-
                         <p>
                             Word not found.
                         </p>
@@ -742,7 +758,8 @@ function ReadingDetail(){
 
 
 
-                </div>
+                </aside>
+
 
                 )
 
@@ -751,14 +768,13 @@ function ReadingDetail(){
 
 
 
-
         </div>
-
 
     );
 
 
 }
+
 
 
 export default ReadingDetail;

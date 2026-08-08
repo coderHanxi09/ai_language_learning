@@ -1,108 +1,179 @@
 import re
 
-from app.ai.factory import get_ai_provider
 
 
+# =====================================================
+# Sentence splitting
+# =====================================================
 
-def split_sentences(text: str) -> list[str]:
-    """
-    Split German / English sentences safely.
 
-    Handles:
-    - numbers: 1.000
-    - abbreviations
-    - normal punctuation
-    """
+def split_sentences(
+    text: str
+):
+
+
+    if not text:
+
+        return []
+
 
 
     text = text.strip()
 
 
-    # protect numbers
-    text = re.sub(
-        r"(\d)\.(\d)",
-        r"\1<DOT>\2",
-        text
-    )
-
 
     # protect common abbreviations
-
-    abbreviations = [
-        "z.B.",
-        "d.h.",
-        "u.a.",
-        "Dr.",
-        "Prof.",
-        "Nr."
-    ]
+    protected = {
 
 
-    for abbr in abbreviations:
+        "Dr.":
+
+            "Dr<dot>",
+
+
+        "Prof.":
+
+            "Prof<dot>",
+
+
+        "z.B.":
+
+            "z<dot>B<dot>",
+
+
+        "u.a.":
+
+            "u<dot>a<dot>",
+
+
+        "d.h.":
+
+            "d<dot>h<dot>",
+
+    }
+
+
+
+    for old,new in protected.items():
 
         text = text.replace(
-            abbr,
-            abbr.replace(
-                ".",
-                "<DOT>"
-            )
+            old,
+            new
         )
 
 
-    sentences = re.split(
-        r"(?<=[.!?])\s+",
+
+
+
+
+    # protect dates
+    #
+    # 31. July
+    # 01. August
+    #
+
+    text = re.sub(
+
+        r"(\d{1,2})\.\s+([A-ZÄÖÜ][a-zäöü]+)",
+
+        r"\1<date> \2",
+
         text
+
     )
+
+
+
+
+
+    # protect decimal numbers
+    #
+    # 3.5
+    #
+
+    text = re.sub(
+
+        r"(\d+)\.(\d+)",
+
+        r"\1<decimal>\2",
+
+        text
+
+    )
+
+
+
+
+
+
+    # split sentences
+    #
+    # . ! ?
+    # followed by whitespace
+    #
+
+    sentences = re.split(
+
+        r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])",
+
+        text
+
+    )
+
+
+
+
 
 
     result=[]
 
 
-    for sentence in sentences:
 
-        sentence = sentence.replace(
-            "<DOT>",
-            "."
-        )
+    for sentence in sentences:
 
 
         sentence = sentence.strip()
 
 
-        if sentence:
 
-            result.append(
-                sentence
+        if not sentence:
+
+            continue
+
+
+
+
+
+        # restore protected symbols
+
+
+        for old,new in protected.items():
+
+            sentence = sentence.replace(
+                new,
+                old
             )
 
 
+
+        sentence = sentence.replace(
+            "<date>",
+            "."
+        )
+
+
+        sentence = sentence.replace(
+            "<decimal>",
+            "."
+        )
+
+
+
+        result.append(
+            sentence
+        )
+
+
+
+
     return result
-
-
-
-
-
-def translate_sentence(sentence: str) -> str:
-    """
-    Translate one sentence.
-    """
-
-    provider = get_ai_provider()
-
-
-    prompt = f"""
-Translate the following German sentence into English.
-
-Requirements:
-- Keep the meaning accurate.
-- Do not explain.
-- Return ONLY the translation.
-
-Sentence:
-{sentence}
-"""
-
-
-    return provider.generate(
-        prompt
-    ).strip()
