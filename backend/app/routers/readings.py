@@ -9,8 +9,8 @@ from pydantic import BaseModel, Field
 import json
 
 
-from ..services.ai_service import (
-    generate_reading
+from ..services.translation_service import (
+    translate_sentences
 )
 
 
@@ -19,18 +19,8 @@ from ..services.sentence_service import (
 )
 
 
-from ..services.translation_service import (
-    translate_sentences
-)
-
-
 from ..services.word_token_service import (
     analyze_sentence
-)
-
-
-from ..services.dictionary_service import (
-    lookup_words
 )
 
 
@@ -44,7 +34,6 @@ from ..models_db import (
 )
 
 
-
 router = APIRouter()
 
 
@@ -55,24 +44,23 @@ router = APIRouter()
 # Request Model
 # =====================================================
 
+class ReadingCreateRequest(BaseModel):
 
-class ReadingRequest(BaseModel):
-
-    topic: str
-
-
-    difficulty: str = "B2"
+    title: str
 
 
-    # language of generated article
+    content: str
+
+
     # de / en
     source_language: str = "de"
 
 
-    # translation language
     # en / zh
     translation_language: str = "en"
 
+
+    difficulty: str = "B2"
 
 
     known_vocabulary: list[str] = Field(
@@ -86,55 +74,46 @@ class ReadingRequest(BaseModel):
 
 
 # =====================================================
-# Create initial reading
+# Create Reading
 # =====================================================
 
-
-def _create_initial_reading(
+def _create_reading(
     payload: dict
 ):
 
     session = SessionLocal()
 
-
     try:
-
 
         reading = ReadingDB(
 
-            title="Generating...",
+            title=payload["title"],
 
-
-            topic=payload["topic"],
-
+            topic=None,
 
             difficulty=payload.get(
                 "difficulty",
                 "B2"
             ),
 
-
             source_language=payload.get(
                 "source_language",
                 "de"
             ),
-
 
             translation_language=payload.get(
                 "translation_language",
                 "en"
             ),
 
-
-            content="",
-
+            content=payload["content"],
 
             vocabulary=json.dumps(
-                []
+                [],
+                ensure_ascii=False
             ),
 
-
-            status="generating"
+            status="processing"
 
         )
 
@@ -155,7 +134,6 @@ def _create_initial_reading(
         return reading.id
 
 
-
     finally:
 
         session.close()
@@ -166,144 +144,109 @@ def _create_initial_reading(
 
 
 
+
 # =====================================================
-# Save sentences and words
+# Save sentences + words
 # =====================================================
 
-
-def _save_sentences(
-    session,
+def _process_sentences(
     reading_id: int,
     content: str,
     source_language: str,
     translation_language: str
 ):
 
-
-    sentences = split_sentences(
-        content
-    )
+    session = SessionLocal()
 
 
-
-    translations = translate_sentences(
-
-        sentences,
-
-        source_language,
-
-        translation_language
-
-    )
+    try:
 
 
-
-    translation_map = {
-
-        item["sentence_order"]:
-            item["translation"]
-
-        for item in translations
-
-    }
-
-
-
-
-    for index, sentence in enumerate(sentences):
-
-
-        order = index + 1
-
-
-
-        sentence_obj = ReadingSentenceDB(
-
-            reading_id=reading_id,
-
-
-            sentence_order=order,
-
-
-            original=sentence,
-
-
-            translation=translation_map.get(
-                order
-            )
-
+        sentences = split_sentences(
+            content
         )
 
 
-        session.add(
-            sentence_obj
+        translations = translate_sentences(
+            sentences
         )
 
 
-        session.flush()
+        translation_map = {
+
+            item["sentence_order"]:
+                item["translation"]
+
+            for item in translations
+
+        }
 
 
 
+        for index, sentence in enumerate(sentences):
 
 
-        # =========================
-        # NLP analysis
-        # =========================
-
-
-        tokens = analyze_sentence(
-            sentence
-        )
+            sentence_order = index + 1
 
 
 
+            sentence_db = ReadingSentenceDB(
 
-        for position, token in enumerate(tokens):
+                reading_id=reading_id,
 
+                sentence_order=sentence_order,
 
-            word_obj = ReadingWordDB(
+                original=sentence,
 
-                sentence_id=sentence_obj.id,
-
-
-                word=token["word"],
-
-
-                lemma=token["lemma"],
-
-
-                position=position + 1
+                translation=translation_map.get(
+                    sentence_order
+                )
 
             )
 
 
             session.add(
-                word_obj
+                sentence_db
+            )
+
+
+            session.flush()
+
+
+
+            # =========================
+            # German NLP
+            # =========================
+
+            words = analyze_sentence(
+                sentence,
+                language=source_language
             )
 
 
 
+            for position, word in enumerate(words):
 
 
+                word_db = ReadingWordDB(
+
+                    sentence_id=sentence_db.id,
+
+                    word=word["word"],
+
+                    lemma=word["lemma"],
+
+                    pos=word["pos"],
+
+                    position=position + 1
+
+                )
 
 
-# =====================================================
-# Update success
-# =====================================================
+                session.add(
+                    word_db
+                )
 
-
-def _update_reading_success(
-    reading_id:int,
-    data:dict,
-    source_language:str,
-    translation_language:str
-):
-
-
-    session = SessionLocal()
-
-
-    try:
 
 
         reading = session.query(
@@ -314,64 +257,7 @@ def _update_reading_success(
 
 
 
-        if not reading:
-
-            return
-
-
-
-
-
-        reading.title = data.get(
-            "title",
-            "Reading"
-        )
-
-
-        reading.content = data.get(
-            "content",
-            ""
-        )
-
-
-        reading.vocabulary = json.dumps(
-
-            data.get(
-                "vocabulary",
-                []
-            ),
-
-            ensure_ascii=False
-
-        )
-
-
-
         reading.status = "completed"
-
-
-
-
-        _save_sentences(
-
-            session,
-
-
-            reading_id,
-
-
-            data.get(
-                "content",
-                ""
-            ),
-
-
-            source_language,
-
-
-            translation_language
-
-        )
 
 
 
@@ -379,16 +265,25 @@ def _update_reading_success(
 
 
 
-        print(
-            "[READING] completed"
-        )
-
-
-
     except Exception as e:
 
 
         session.rollback()
+
+
+        reading = session.query(
+            ReadingDB
+        ).filter(
+            ReadingDB.id == reading_id
+        ).first()
+
+
+        if reading:
+
+            reading.status="failed"
+
+            session.commit()
+
 
         raise e
 
@@ -404,141 +299,51 @@ def _update_reading_success(
 
 
 
-# =====================================================
-# Update failed
-# =====================================================
-
-
-def _update_reading_failed(
-    reading_id:int
-):
-
-
-    session = SessionLocal()
-
-
-    try:
-
-
-        reading = session.query(
-            ReadingDB
-        ).filter(
-            ReadingDB.id == reading_id
-        ).first()
-
-
-
-        if reading:
-
-            reading.status="failed"
-
-            session.commit()
-
-
-
-    finally:
-
-        session.close()
-
-
-
-
-
-
 
 # =====================================================
-# Background generation
+# Background task
 # =====================================================
 
-
-def _background_generate_and_update(
-    reading_id,
-    payload
+def _background_process_reading(
+    reading_id:int,
+    content:str,
+    source_language:str,
+    translation_language:str
 ):
 
 
     try:
-
 
         print(
-            "[READING] generating",
-            payload
+            "[READING] processing",
+            reading_id
         )
 
 
-
-        result = generate_reading(
-
-            payload["topic"],
-
-
-            payload.get(
-                "difficulty",
-                "B2"
-            ),
-
-
-            payload.get(
-                "source_language",
-                "de"
-            ),
-
-
-            payload.get(
-                "translation_language",
-                "en"
-            ),
-
-
-            payload.get(
-                "known_vocabulary",
-                []
-            )
-
-        )
-
-
-
-
-
-        _update_reading_success(
+        _process_sentences(
 
             reading_id,
 
+            content,
 
-            result,
+            source_language,
 
-
-            payload.get(
-                "source_language",
-                "de"
-            ),
-
-
-            payload.get(
-                "translation_language",
-                "en"
-            )
+            translation_language
 
         )
 
 
-
+        print(
+            "[READING] completed"
+        )
 
 
     except Exception as e:
-
 
         print(
             "[READING ERROR]",
             e
         )
-
-
-        _update_reading_failed(
-            reading_id
-        )
-
 
 
 
@@ -551,11 +356,13 @@ def _background_generate_and_update(
 # POST /readings
 # =====================================================
 
-
 @router.post("/readings")
 def create_reading(
-    req: ReadingRequest,
+
+    req: ReadingCreateRequest,
+
     background_tasks: BackgroundTasks
+
 ):
 
 
@@ -563,7 +370,7 @@ def create_reading(
 
 
 
-    reading_id = _create_initial_reading(
+    reading_id = _create_reading(
         payload
     )
 
@@ -571,13 +378,21 @@ def create_reading(
 
     background_tasks.add_task(
 
-        _background_generate_and_update,
-
+        _background_process_reading,
 
         reading_id,
 
+        payload["content"],
 
-        payload
+        payload.get(
+            "source_language",
+            "de"
+        ),
+
+        payload.get(
+            "translation_language",
+            "en"
+        )
 
     )
 
@@ -587,8 +402,7 @@ def create_reading(
 
         "id": reading_id,
 
-
-        "status": "generating"
+        "status": "processing"
 
     }
 
@@ -599,18 +413,14 @@ def create_reading(
 
 
 
-
 # =====================================================
-# GET /readings
+# GET all readings
 # =====================================================
-
 
 @router.get("/readings")
 def get_readings():
 
-
     session = SessionLocal()
-
 
 
     try:
@@ -624,33 +434,30 @@ def get_readings():
 
 
 
-
         return [
 
             {
 
                 "id": r.id,
 
-
                 "title": r.title,
 
-
                 "status": r.status,
-
 
                 "source_language":
                     r.source_language,
 
-
                 "translation_language":
-                    r.translation_language
+                    r.translation_language,
+
+                "difficulty":
+                    r.difficulty
 
             }
 
             for r in readings
 
         ]
-
 
 
     finally:
@@ -664,9 +471,8 @@ def get_readings():
 
 
 # =====================================================
-# GET /readings/{id}
+# GET reading detail
 # =====================================================
-
 
 @router.get("/readings/{reading_id}")
 def get_reading(
@@ -675,7 +481,6 @@ def get_reading(
 
 
     session = SessionLocal()
-
 
 
     try:
@@ -689,9 +494,7 @@ def get_reading(
 
 
 
-
         if not reading:
-
 
             raise HTTPException(
 
@@ -703,10 +506,7 @@ def get_reading(
 
 
 
-
-
         sentences=[]
-
 
 
 
@@ -724,16 +524,15 @@ def get_reading(
 
                     {
 
-                        "id":word.id,
+                        "id": word.id,
 
+                        "word": word.word,
 
-                        "word":word.word,
+                        "lemma": word.lemma,
 
+                        "pos": word.pos,
 
-                        "lemma":word.lemma,
-
-
-                        "position":word.position
+                        "position": word.position
 
                     }
 
@@ -745,22 +544,19 @@ def get_reading(
 
                 {
 
-                    "id":sentence.id,
-
+                    "id": sentence.id,
 
                     "sentence_order":
                         sentence.sentence_order,
 
-
                     "original":
                         sentence.original,
-
 
                     "translation":
                         sentence.translation,
 
-
-                    "words":words
+                    "words":
+                        words
 
                 }
 
@@ -768,41 +564,27 @@ def get_reading(
 
 
 
-
-
         return {
 
+            "id": reading.id,
 
-            "id":reading.id,
+            "title": reading.title,
 
-
-            "title":reading.title,
-
-
-            "topic":reading.topic,
-
-
-            "difficulty":reading.difficulty,
-
+            "difficulty": reading.difficulty,
 
             "source_language":
                 reading.source_language,
 
-
             "translation_language":
                 reading.translation_language,
 
+            "status": reading.status,
 
-            "status":reading.status,
+            "content": reading.content,
 
-
-            "content":reading.content,
-
-
-            "sentences":sentences
+            "sentences": sentences
 
         }
-
 
 
     finally:

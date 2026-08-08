@@ -1,27 +1,12 @@
 import spacy
+
 from functools import lru_cache
 
 
 
 
-# =====================================================
-# Load NLP model by language
-# =====================================================
-
 @lru_cache(maxsize=5)
-def get_nlp(
-    language: str
-):
-
-    """
-    Load spaCy model.
-
-    Supported:
-
-    de -> German
-    en -> English
-
-    """
+def get_nlp(language:str):
 
 
     if language == "de":
@@ -49,31 +34,11 @@ def get_nlp(
 
 
 
-# =====================================================
-# Analyze sentence
-# =====================================================
 
 def analyze_sentence(
-    sentence: str,
-    language: str = "de"
+    sentence:str,
+    language:str="de"
 ):
-
-    """
-    Analyze sentence.
-
-    Example German:
-
-    Entscheidungsmöglichkeiten
-
-    ->
-    
-    {
-        word:
-        lemma:
-        pos:
-    }
-
-    """
 
 
     nlp = get_nlp(
@@ -86,26 +51,35 @@ def analyze_sentence(
     )
 
 
-    result = []
+    result=[]
 
 
     for token in doc:
 
 
-        # ignore punctuation
-        if token.is_punct:
-
-            continue
-
-
-        # ignore spaces
         if token.is_space:
 
             continue
 
 
 
-        if not token.is_alpha:
+        if token.is_punct:
+
+            continue
+
+
+
+        # 保留：
+        # AfD
+        # Verbotsverfahrens
+        # 1000
+        # KI-Modelle
+
+        word = token.text.strip()
+
+
+
+        if not word:
 
             continue
 
@@ -116,7 +90,7 @@ def analyze_sentence(
             {
 
                 "word":
-                    token.text,
+                    word,
 
 
                 "lemma":
@@ -139,29 +113,15 @@ def analyze_sentence(
 
 
 
-# =====================================================
-# Tokenize sentence
-# =====================================================
-
 def tokenize_sentence(
-    sentence: str,
-    language: str = "de"
+    sentence:str,
+    language:str="de"
 ):
-
-    """
-    Return analyzed tokens.
-
-    Used by reading pipeline.
-
-    """
 
 
     return analyze_sentence(
-
         sentence,
-
         language
-
     )
 
 
@@ -169,46 +129,24 @@ def tokenize_sentence(
 
 
 
-
-# =====================================================
-# Normalize word
-# =====================================================
 
 def normalize_word(
-    word: str,
-    language: str = "de"
+    word:str,
+    language:str="de"
 ):
 
-    """
-    Convert word to lemma.
 
-    Example:
-
-    German:
-
-    gegangen -> gehen
-
-    Wörter -> wort
-
-
-    English:
-
-    running -> run
-
-    """
-
-
-    nlp = get_nlp(
+    nlp=get_nlp(
         language
     )
 
 
-    doc = nlp(
+    doc=nlp(
         word
     )
 
 
-    if not doc:
+    if len(doc)==0:
 
         return word.lower()
 

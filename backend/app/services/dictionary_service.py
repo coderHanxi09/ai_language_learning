@@ -2,81 +2,16 @@ import json
 from typing import Optional, List
 
 
+from app.ai.factory import get_ai_provider
+
+
 from ..db import SessionLocal
+
 
 from ..models_db import (
     DictionaryEntryDB,
     DictionaryTranslationDB
 )
-
-
-
-
-
-# =====================================================
-# Parse examples
-# =====================================================
-
-def _parse_examples(
-    examples
-):
-
-    if not examples:
-        return []
-
-
-    if isinstance(
-        examples,
-        list
-    ):
-        return examples
-
-
-    try:
-        return json.loads(
-            examples
-        )
-
-    except Exception:
-        return []
-
-
-
-
-
-
-
-# =====================================================
-# Normalize language
-# =====================================================
-
-def _normalize_language(
-    language: str
-):
-
-    if not language:
-        return "de"
-
-
-    language = language.lower()
-
-
-    if language in [
-        "german",
-        "deutsch"
-    ]:
-        return "de"
-
-
-    if language in [
-        "english",
-        "englisch"
-    ]:
-        return "en"
-
-
-    return language
-
 
 
 
@@ -97,10 +32,11 @@ def _database_lookup(
 
     try:
 
+
         entry = session.query(
             DictionaryEntryDB
         ).filter(
-            DictionaryEntryDB.lemma.ilike(word),
+            DictionaryEntryDB.word.ilike(word),
             DictionaryEntryDB.language == language
         ).first()
 
@@ -112,7 +48,7 @@ def _database_lookup(
             entry = session.query(
                 DictionaryEntryDB
             ).filter(
-                DictionaryEntryDB.word.ilike(word),
+                DictionaryEntryDB.lemma.ilike(word),
                 DictionaryEntryDB.language == language
             ).first()
 
@@ -133,8 +69,6 @@ def _database_lookup(
             translations[
                 t.language
             ] = t.translation
-
-
 
 
 
@@ -166,9 +100,9 @@ def _database_lookup(
 
 
             "examples":
-                _parse_examples(
-                    entry.examples
-                ),
+                json.loads(entry.examples)
+                if entry.examples
+                else [],
 
 
             "translations":
@@ -189,142 +123,93 @@ def _database_lookup(
 
 
 # =====================================================
-# German fallback dictionary
+# Gemini dictionary lookup
 # =====================================================
 
-def _german_fallback(
-    word: str
+def _ai_dictionary_lookup(
+    word: str,
+    language: str
 ):
 
-    """
-    Temporary fallback.
 
-    Later can replace with:
-    - Wiktionary API
-    - DWDS API
-    - dict.cc API
-    - LLM dictionary generation
-    """
+    provider = get_ai_provider()
 
 
 
-    common_words = {
+    prompt = f"""
+You are a professional dictionary.
+
+Create a dictionary entry.
+
+Word:
+{word}
+
+Language:
+{language}
 
 
-        "technologie": {
+Return ONLY valid JSON.
 
-            "translation":
-                "technology",
+Format:
 
-            "pos":
-                "noun",
+{{
+ "word":"",
+ "lemma":"",
+ "language":"",
+ "pos":"",
+ "cefr":"",
+ "ipa":"",
+ "examples":[],
+ "translations": {{
+     "en":""
+ }},
+ "definition":""
+}}
 
-            "cefr":
-                "B1"
+Requirements:
 
-        },
-
-
-        "innovation": {
-
-            "translation":
-                "innovation",
-
-            "pos":
-                "noun",
-
-            "cefr":
-                "B2"
-
-        },
-
-
-        "entwicklung": {
-
-            "translation":
-                "development",
-
-            "pos":
-                "noun",
-
-            "cefr":
-                "B2"
-
-        },
-
-
-        "entscheidung": {
-
-            "translation":
-                "decision",
-
-            "pos":
-                "noun",
-
-            "cefr":
-                "B2"
-
-        }
-
-
-    }
+- If German word, explain German meaning.
+- Provide English translation.
+- Provide CEFR level.
+- Provide IPA if possible.
+- Examples must be in original language.
+"""
 
 
 
-    data = common_words.get(
-        word.lower()
+    response = provider.generate(
+        prompt
     )
 
 
 
-    if not data:
+    try:
+
+
+        data = json.loads(
+            response
+        )
+
+
+        return data
+
+
+
+    except Exception as e:
+
+
+        print(
+            "[DICTIONARY AI ERROR]",
+            e
+        )
+
+
+        print(
+            response
+        )
+
 
         return None
-
-
-
-
-    return {
-
-
-        "word":
-            word,
-
-
-        "lemma":
-            word,
-
-
-        "language":
-            "de",
-
-
-        "pos":
-            data["pos"],
-
-
-        "cefr":
-            data["cefr"],
-
-
-        "ipa":
-            None,
-
-
-        "examples":
-            [],
-
-
-        "translations":
-
-            {
-
-                "en":
-                    data["translation"]
-
-            }
-
-    }
 
 
 
@@ -337,7 +222,7 @@ def _german_fallback(
 # =====================================================
 
 def _save_dictionary_entry(
-    data: dict
+    data:dict
 ):
 
 
@@ -347,48 +232,62 @@ def _save_dictionary_entry(
     try:
 
 
-        existing = session.query(
+        exists = session.query(
             DictionaryEntryDB
         ).filter(
-            DictionaryEntryDB.lemma == data["lemma"],
+            DictionaryEntryDB.word == data["word"],
             DictionaryEntryDB.language == data["language"]
         ).first()
 
 
 
-        if existing:
+        if exists:
 
-            return existing.id
+            return
+
 
 
 
 
         entry = DictionaryEntryDB(
 
+
             word=data["word"],
 
-            lemma=data["lemma"],
+
+            lemma=data.get(
+                "lemma",
+                data["word"]
+            ),
+
 
             language=data["language"],
+
 
             pos=data.get(
                 "pos"
             ),
 
+
             cefr=data.get(
                 "cefr"
             ),
+
 
             ipa=data.get(
                 "ipa"
             ),
 
+
             examples=json.dumps(
+
                 data.get(
                     "examples",
                     []
                 ),
+
                 ensure_ascii=False
+
             )
 
         )
@@ -404,38 +303,31 @@ def _save_dictionary_entry(
 
 
 
-        translations = data.get(
+        for lang, text in data.get(
             "translations",
             {}
-        )
-
-
-
-        for lang, text in translations.items():
-
-
-            translation = DictionaryTranslationDB(
-
-                dictionary_id=entry.id,
-
-                language=lang,
-
-                translation=text
-
-            )
+        ).items():
 
 
             session.add(
-                translation
+
+                DictionaryTranslationDB(
+
+                    dictionary_id=entry.id,
+
+
+                    language=lang,
+
+
+                    translation=text
+
+                )
+
             )
 
 
 
         session.commit()
-
-
-
-        return entry.id
 
 
 
@@ -459,27 +351,16 @@ def _save_dictionary_entry(
 
 
 # =====================================================
-# Single word lookup
+# Public lookup
 # =====================================================
 
 def lookup_word(
-    word: str,
-    language: str = "de"
-) -> Optional[dict]:
+    word:str,
+    language:str="de"
+):
 
 
-    word = word.strip()
-
-
-    if not word:
-
-        return None
-
-
-
-    language = _normalize_language(
-        language
-    )
+    word = word.strip().lower()
 
 
 
@@ -491,7 +372,6 @@ def lookup_word(
     )
 
 
-
     if result:
 
         return result
@@ -500,26 +380,27 @@ def lookup_word(
 
 
 
-    # 2. fallback
+    # 2. AI dictionary
 
-    if language == "de":
+    result = _ai_dictionary_lookup(
+
+        word,
+
+        language
+
+    )
 
 
-        result = _german_fallback(
-            word
+
+    if result:
+
+
+        _save_dictionary_entry(
+            result
         )
 
 
-
-        if result:
-
-
-            _save_dictionary_entry(
-                result
-            )
-
-
-            return result
+        return result
 
 
 
@@ -534,16 +415,16 @@ def lookup_word(
 
 
 # =====================================================
-# Batch lookup
+# Batch
 # =====================================================
 
 def lookup_words(
-    words: List[str],
-    language: str = "de"
+    words:List[str],
+    language:str="de"
 ):
 
 
-    result = {}
+    result={}
 
 
 
@@ -558,7 +439,7 @@ def lookup_words(
 
         if data:
 
-            result[word] = data
+            result[word]=data
 
 
 

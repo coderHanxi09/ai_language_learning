@@ -1,30 +1,21 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+
 
 from ..services.dictionary_service import (
     lookup_word
 )
 
 
+
 router = APIRouter()
 
 
 
-# =====================================================
-# Request Model
-# =====================================================
-
-class DictionaryLookupRequest(BaseModel):
-
-    word: str
-
-    language: str = "de"
-
 
 
 
 # =====================================================
-# GET single word
+# GET dictionary word
 # =====================================================
 
 @router.get("/{word}")
@@ -33,87 +24,94 @@ def get_dictionary_word(
     language: str = "de"
 ):
 
-    normalized_word = word.strip()
 
+    # =========================
+    # Normalize input
+    # =========================
+
+    normalized_word = (
+        word
+        .strip()
+        .lower()
+    )
+
+
+
+    if not normalized_word:
+
+
+        raise HTTPException(
+
+            status_code=400,
+
+            detail="Word cannot be empty"
+
+        )
+
+
+
+
+
+    # =========================
+    # Lookup
+    # =========================
 
     result = lookup_word(
+
         normalized_word,
+
         language
+
     )
 
 
+
+
+
+    # =========================
+    # Not found
+    # =========================
+
     if not result:
+
 
         return {
 
-            "word": normalized_word,
 
-            "language": language,
+            "word":
+                normalized_word,
 
-            "found": False,
 
-            "message": "Word not found"
+            "found":
+                False,
+
+
+            "message":
+                "Word not found"
 
         }
 
 
 
-    return {
-
-        "word": normalized_word,
-
-        "language": language,
-
-        "found": True,
-
-        "data": result
-
-    }
 
 
 
-
-
-# =====================================================
-# POST lookup
-# =====================================================
-
-@router.post("/lookup")
-def lookup_dictionary_word(
-    body: DictionaryLookupRequest
-):
-
-    word = body.word.strip()
-
-
-    result = lookup_word(
-        word,
-        body.language
-    )
-
-
-    if not result:
-
-        return {
-
-            "word": word,
-
-            "language": body.language,
-
-            "found": False
-
-        }
-
-
+    # =========================
+    # Success
+    # =========================
 
     return {
 
-        "word": word,
 
-        "language": body.language,
+        "word":
+            normalized_word,
 
-        "found": True,
 
-        "data": result
+        "found":
+            True,
+
+
+        "data":
+            result
 
     }
