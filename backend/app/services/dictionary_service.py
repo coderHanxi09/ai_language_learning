@@ -1,17 +1,100 @@
 import json
+import re
 from typing import Optional, List
 
 
-from app.ai.factory import get_ai_provider
-
-
 from ..db import SessionLocal
-
 
 from ..models_db import (
     DictionaryEntryDB,
     DictionaryTranslationDB
 )
+
+
+from ..ai.factory import get_ai_provider
+
+
+
+
+
+# =====================================================
+# Helpers
+# =====================================================
+
+
+def _normalize_language(language: str):
+
+    if not language:
+        return "de"
+
+
+    language = language.lower()
+
+
+    mapping = {
+
+        "german": "de",
+
+        "deutsch": "de",
+
+        "english": "en",
+
+        "englisch": "en"
+
+    }
+
+
+    return mapping.get(
+        language,
+        language
+    )
+
+
+
+
+
+def _parse_json_response(text: str):
+
+    """
+    Extract JSON from AI response
+    """
+
+
+    try:
+
+        return json.loads(text)
+
+
+    except Exception:
+
+        pass
+
+
+
+    match = re.search(
+        r"\{.*\}",
+        text,
+        re.DOTALL
+    )
+
+
+    if match:
+
+        try:
+
+            return json.loads(
+                match.group()
+            )
+
+        except Exception:
+
+            return None
+
+
+
+    return None
+
+
 
 
 
@@ -20,6 +103,7 @@ from ..models_db import (
 # =====================================================
 # Database lookup
 # =====================================================
+
 
 def _database_lookup(
     word: str,
@@ -36,8 +120,11 @@ def _database_lookup(
         entry = session.query(
             DictionaryEntryDB
         ).filter(
-            DictionaryEntryDB.word.ilike(word),
-            DictionaryEntryDB.language == language
+
+            DictionaryEntryDB.language == language,
+
+            DictionaryEntryDB.lemma.ilike(word)
+
         ).first()
 
 
@@ -48,8 +135,11 @@ def _database_lookup(
             entry = session.query(
                 DictionaryEntryDB
             ).filter(
-                DictionaryEntryDB.lemma.ilike(word),
-                DictionaryEntryDB.language == language
+
+                DictionaryEntryDB.language == language,
+
+                DictionaryEntryDB.word.ilike(word)
+
             ).first()
 
 
@@ -96,16 +186,16 @@ def _database_lookup(
                 entry.pos,
 
 
-            "definition":
-                entry.definition,
-
-
             "cefr":
                 entry.cefr,
 
 
             "ipa":
                 entry.ipa,
+
+
+            "definition":
+                entry.definition,
 
 
             "examples":
@@ -116,8 +206,12 @@ def _database_lookup(
                 else [],
 
 
-            "translations":
-                translations
+
+            "translation":
+
+                translations.get(
+                    "en"
+                )
 
         }
 
@@ -134,10 +228,11 @@ def _database_lookup(
 
 
 # =====================================================
-# AI dictionary lookup
+# AI dictionary generation
 # =====================================================
 
-def _ai_dictionary_lookup(
+
+def _generate_dictionary(
     word: str,
     language: str
 ):
@@ -148,9 +243,10 @@ def _ai_dictionary_lookup(
 
 
     prompt = f"""
-You are a professional bilingual dictionary.
 
-Create a dictionary entry.
+You are a professional dictionary.
+
+Create a dictionary entry for this word:
 
 Word:
 {word}
@@ -164,27 +260,25 @@ Return ONLY JSON.
 Format:
 
 {{
-    "word": "",
-    "lemma": "",
-    "language": "",
-    "pos": "",
-    "definition": "",
-    "cefr": "",
-    "ipa": "",
-    "examples": [],
-    "translations": {{
-        "en": ""
-    }}
+ "word":"",
+ "lemma":"",
+ "language":"",
+ "pos":"",
+ "cefr":"",
+ "ipa":"",
+ "definition":"",
+ "translation":"",
+ "examples":[]
 }}
 
+Rules:
 
-Requirements:
+- definition must be in English
+- translation must be English
+- CEFR level should be A1-C2
+- examples should be real sentences
+- no markdown
 
-- Explain the meaning in English.
-- Provide the original language examples.
-- Provide CEFR level.
-- Provide IPA if available.
-- Keep the explanation concise.
 """
 
 
@@ -195,48 +289,37 @@ Requirements:
 
 
 
-    try:
-
-
-        return json.loads(
-            response
-        )
+    data = _parse_json_response(
+        response
+    )
 
 
 
-    except Exception as e:
-
-
-        print(
-            "[DICTIONARY JSON ERROR]",
-            e
-        )
-
-
-        print(
-            response
-        )
-
+    if not data:
 
         return None
 
 
 
+    return data
+
+
+
 
 
 
 
 # =====================================================
-# Save dictionary entry
+# Save dictionary
 # =====================================================
 
-def _save_dictionary_entry(
+
+def _save_dictionary(
     data: dict
 ):
 
 
     session = SessionLocal()
-
 
 
     try:
@@ -246,15 +329,18 @@ def _save_dictionary_entry(
         existing = session.query(
             DictionaryEntryDB
         ).filter(
-            DictionaryEntryDB.word == data["word"],
+
+            DictionaryEntryDB.lemma == data["lemma"],
+
             DictionaryEntryDB.language == data["language"]
+
         ).first()
 
 
 
         if existing:
 
-            return
+            return existing.id
 
 
 
@@ -266,10 +352,7 @@ def _save_dictionary_entry(
             word=data["word"],
 
 
-            lemma=data.get(
-                "lemma",
-                data["word"]
-            ),
+            lemma=data["lemma"],
 
 
             language=data["language"],
@@ -280,11 +363,6 @@ def _save_dictionary_entry(
             ),
 
 
-            definition=data.get(
-                "definition"
-            ),
-
-
             cefr=data.get(
                 "cefr"
             ),
@@ -292,6 +370,11 @@ def _save_dictionary_entry(
 
             ipa=data.get(
                 "ipa"
+            ),
+
+
+            definition=data.get(
+                "definition"
             ),
 
 
@@ -321,14 +404,13 @@ def _save_dictionary_entry(
 
 
 
-        translations = data.get(
-            "translations",
-            {}
+        translation = data.get(
+            "translation"
         )
 
 
 
-        for language, translation in translations.items():
+        if translation:
 
 
             session.add(
@@ -337,9 +419,7 @@ def _save_dictionary_entry(
 
                     dictionary_id=entry.id,
 
-
-                    language=language,
-
+                    language="en",
 
                     translation=translation
 
@@ -349,21 +429,20 @@ def _save_dictionary_entry(
 
 
 
+
+
         session.commit()
 
 
 
-    except Exception as e:
+        return entry.id
+
+
+
+    except Exception:
 
 
         session.rollback()
-
-
-        print(
-            "[SAVE DICTIONARY ERROR]",
-            e
-        )
-
 
         raise
 
@@ -380,20 +459,17 @@ def _save_dictionary_entry(
 
 
 # =====================================================
-# Public API
+# Public lookup
 # =====================================================
+
 
 def lookup_word(
     word: str,
     language: str = "de"
-) -> Optional[dict]:
+):
 
 
-    word = (
-        word
-        .strip()
-        .lower()
-    )
+    word = word.strip()
 
 
 
@@ -403,16 +479,17 @@ def lookup_word(
 
 
 
+    language = _normalize_language(
+        language
+    )
+
 
 
     # 1. database
 
     result = _database_lookup(
-
         word,
-
         language
-
     )
 
 
@@ -425,10 +502,9 @@ def lookup_word(
 
 
 
+    # 2. AI generate
 
-    # 2. Gemini dictionary
-
-    result = _ai_dictionary_lookup(
+    result = _generate_dictionary(
 
         word,
 
@@ -438,23 +514,21 @@ def lookup_word(
 
 
 
-    if result:
+    if not result:
 
-
-        _save_dictionary_entry(
-
-            result
-
-        )
-
-
-        return result
+        return None
 
 
 
 
 
-    return None
+    _save_dictionary(
+        result
+    )
+
+
+
+    return result
 
 
 
@@ -465,6 +539,7 @@ def lookup_word(
 # =====================================================
 # Batch lookup
 # =====================================================
+
 
 def lookup_words(
     words: List[str],
