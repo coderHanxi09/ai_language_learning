@@ -13,8 +13,6 @@ import api from "../api/axios";
 
 
 
-
-
 function ReadingDetail(){
 
 
@@ -27,11 +25,7 @@ function ReadingDetail(){
     const [wordInfo,setWordInfo] = useState(null);
 
 
-    const [loadingWord,setLoadingWord] = useState(false);
-
-
-
-
+    const [selectedWord,setSelectedWord] = useState("");
 
 
 
@@ -56,6 +50,7 @@ function ReadingDetail(){
             return res.data.status;
 
 
+
         }catch(error){
 
 
@@ -68,7 +63,6 @@ function ReadingDetail(){
 
 
     }
-
 
 
 
@@ -91,13 +85,13 @@ function ReadingDetail(){
 
 
 
+
             if(
-                status !== "completed"
+                status === "processing"
             ){
 
 
-                timer=setInterval(
-
+                timer = setInterval(
                     async ()=>{
 
 
@@ -107,20 +101,20 @@ function ReadingDetail(){
 
 
                         if(
-                            newStatus === "completed"
+                            newStatus !== "processing"
                         ){
+
 
                             clearInterval(
                                 timer
                             );
 
+
                         }
 
 
                     },
-
                     3000
-
                 );
 
 
@@ -131,9 +125,7 @@ function ReadingDetail(){
 
 
 
-
         start();
-
 
 
 
@@ -142,9 +134,7 @@ function ReadingDetail(){
 
             if(timer){
 
-                clearInterval(
-                    timer
-                );
+                clearInterval(timer);
 
             }
 
@@ -170,59 +160,32 @@ function ReadingDetail(){
         try{
 
 
-            setLoadingWord(
-                true
-            );
-
-
-
             const cleanWord =
                 word
                 .replace(
                     /[.,!?;:"'()]/g,
                     ""
                 )
-                .trim();
+                .toLowerCase();
+
+
+
+            setSelectedWord(
+                cleanWord
+            );
 
 
 
             const res =
                 await api.get(
-
                     `/dictionary/${cleanWord}?language=${data.source_language}`
-
                 );
 
 
 
-
-            if(
-                res.data.found
-            ){
-
-
-                setWordInfo(
-
-                    res.data.data
-
-                );
-
-
-            }else{
-
-
-                setWordInfo({
-
-                    word:cleanWord,
-
-                    definition:
-                    "Word not found"
-
-                });
-
-
-            }
-
+            setWordInfo(
+                res.data
+            );
 
 
 
@@ -234,12 +197,7 @@ function ReadingDetail(){
             );
 
 
-        }finally{
-
-
-            setLoadingWord(
-                false
-            );
+            setWordInfo(null);
 
 
         }
@@ -258,11 +216,14 @@ function ReadingDetail(){
     async function addVocabulary(){
 
 
-        if(!wordInfo){
+        if(
+            !wordInfo?.data
+        ){
 
             return;
 
         }
+
 
 
 
@@ -275,13 +236,34 @@ function ReadingDetail(){
 
                 {
 
+
                     word:
-                        wordInfo.word,
+                        wordInfo.data.word,
 
 
-                    language:
-                        wordInfo.language ||
-                        data.source_language
+                    lemma:
+                        wordInfo.data.lemma,
+
+
+                    definition:
+                        wordInfo.data.definition,
+
+
+                    translation:
+                        wordInfo.data.translations?.en || "",
+
+
+                    cefr:
+                        wordInfo.data.cefr,
+
+
+                    pos:
+                        wordInfo.data.pos,
+
+
+                    source_language:
+                        wordInfo.data.language
+
 
                 }
 
@@ -290,7 +272,7 @@ function ReadingDetail(){
 
 
             alert(
-                "Added to vocabulary"
+                "Added!"
             );
 
 
@@ -304,7 +286,7 @@ function ReadingDetail(){
 
 
             alert(
-                "Failed"
+                "Failed to add vocabulary"
             );
 
 
@@ -340,6 +322,49 @@ function ReadingDetail(){
 
 
 
+    if(
+        data.status === "processing"
+    ){
+
+
+        return (
+
+            <div
+
+            style={{
+
+                padding:"40px"
+
+            }}
+
+            >
+
+                <h1
+                style={{
+                    lineHeight:"1.5"
+                }}
+                >
+                    Generating translation...
+                </h1>
+
+
+                <p>
+                    AI is preparing your reading material.
+                </p>
+
+
+            </div>
+
+        );
+
+
+    }
+
+
+
+
+
+
 
 
     return (
@@ -347,57 +372,31 @@ function ReadingDetail(){
 
         <div
 
-
-        onClick={()=>{
-
-
-            if(wordInfo){
-
-                setWordInfo(null);
-
-            }
-
-
-        }}
-
-
-
         style={{
 
             display:"flex",
 
             gap:"30px",
 
-            padding:"20px",
+            maxWidth:"1400px",
 
-            alignItems:"flex-start"
+            margin:"0 auto",
+
+            padding:"30px"
 
         }}
-
-
 
         >
 
 
 
 
-
-
-
-            {/* ====================
-                Article
-            ==================== */}
-
+            {/* =====================
+                Article Area
+            ====================== */}
 
 
             <div
-
-
-            onClick={
-                e=>e.stopPropagation()
-            }
-
-
 
             style={{
 
@@ -407,39 +406,58 @@ function ReadingDetail(){
 
             }}
 
-
             >
 
 
 
-                <h1>
+                <h1
 
-                    {
-                        data.title ||
-                        "Imported Reading"
-                    }
+                style={{
+
+                    fontSize:"32px",
+
+                    lineHeight:"1.4",
+
+                    marginBottom:"10px",
+
+                    overflowWrap:
+                        "break-word",
+
+                    wordBreak:
+                        "break-word"
+
+                }}
+
+                >
+
+                    {data.title}
 
                 </h1>
 
 
 
 
-                <p>
+
+                <div
+
+                style={{
+
+                    marginBottom:"30px"
+
+                }}
+
+                >
 
                     Difficulty:
 
                     {" "}
 
-                    {
-                        data.difficulty
-                    }
-
-                </p>
+                    <b>
+                        {data.difficulty}
+                    </b>
 
 
-
-
-                <hr/>
+                </div>
 
 
 
@@ -448,160 +466,142 @@ function ReadingDetail(){
 
 
                 {
+                    data.sentences?.map(
 
-                data.sentences?.map(
-
-                    sentence=>(
-
-
-                    <div
-
-
-                    key={
-                        sentence.id
-                    }
-
-
-
-                    style={{
-
-                        marginBottom:"25px"
-
-                    }}
-
-
-
-                    >
-
+                        sentence=>(
 
 
                         <div
 
+                        key={
+                            sentence.id
+                        }
+
 
                         style={{
 
-                            display:"flex",
-
-                            flexWrap:"wrap",
-
-                            gap:"4px",
-
-                            lineHeight:"1.8",
-
-                            fontSize:"18px"
+                            marginBottom:"35px"
 
                         }}
-
 
 
                         >
 
 
 
-                        {
-
-                        sentence.words?.map(
-
-                            w=>(
-
-
-                            <span
-
-
-                            key={
-                                w.id
-                            }
-
-
-
-                            onClick={
-
-                                e=>{
-
-                                    e.stopPropagation();
-
-                                    handleWordClick(
-                                        w.word
-                                    );
-
-                                }
-
-                            }
-
-
+                            <div
 
                             style={{
 
-                                cursor:"pointer",
+                                display:"flex",
 
-                                padding:"2px 4px",
+                                flexWrap:"wrap",
 
-                                borderRadius:"4px"
+                                gap:"8px",
+
+                                fontSize:"18px",
+
+                                lineHeight:"1.8"
 
                             }}
-
-
 
                             >
 
 
-                                {w.word}
+                            {
+                                sentence.words?.map(
+
+                                    word=>(
 
 
-                            </span>
+                                    <span
+
+                                    key={
+                                        word.id
+                                    }
 
 
-                            )
+                                    onClick={()=>{
+
+                                        handleWordClick(
+                                            word.word
+                                        );
+
+                                    }}
 
 
-                        )
+                                    style={{
 
-                        }
+                                        cursor:
+                                            "pointer",
+
+                                        padding:
+                                            "2px 3px",
+
+                                        borderRadius:
+                                            "4px"
+
+                                    }}
+
+
+                                    >
+
+                                        {
+                                            word.word
+                                        }
+
+
+                                    </span>
+
+
+                                    )
+
+                                )
+                            }
+
+
+                            </div>
+
+
+
+
+
+                            <p
+
+                            style={{
+
+                                marginTop:"10px",
+
+                                color:"#555",
+
+                                fontSize:"16px",
+
+                                lineHeight:"1.6"
+
+                            }}
+
+                            >
+
+                                {
+                                    sentence.translation
+                                }
+
+                            </p>
 
 
 
                         </div>
 
 
-
-
-
-                        <p
-
-                        style={{
-
-                            color:"#666",
-
-                            marginTop:"8px"
-
-                        }}
-
-                        >
-
-                            {
-                                sentence.translation
-                            }
-
-                        </p>
-
-
-
-
-
-                    </div>
-
+                        )
 
                     )
-
-
-                )
 
                 }
 
 
 
 
-
             </div>
 
 
@@ -612,221 +612,141 @@ function ReadingDetail(){
 
 
 
-            {/* ====================
-                Dictionary Panel
-            ==================== */}
-
-
-
-            <div
-
-
-            onClick={
-                e=>e.stopPropagation()
-            }
-
-
-
-            style={{
-
-                width:"320px",
-
-                flexShrink:0,
-
-                position:"sticky",
-
-                top:"20px",
-
-                borderLeft:"1px solid #ddd",
-
-                paddingLeft:"20px",
-
-                minHeight:"200px"
-
-            }}
-
-
-
-            >
-
-
+            {/* =====================
+                Dictionary Sidebar
+            ====================== */}
 
 
             {
+                wordInfo && (
 
-                loadingWord && (
+                <div
 
-                    <p>
-                        Loading dictionary...
-                    </p>
+                style={{
 
-                )
+                    width:"320px",
 
-            }
+                    flexShrink:0,
 
+                    position:"sticky",
 
+                    top:"20px",
 
+                    height:"fit-content",
 
+                    padding:"20px",
 
-            {
+                    border:
+                        "1px solid #ddd",
 
-            wordInfo && !loadingWord && (
+                    borderRadius:"10px",
 
+                    background:"#fff"
 
-                <div>
+                }}
+
+                >
 
 
 
                     <h2>
 
                         {
-                            wordInfo.word
+                            selectedWord
                         }
 
                     </h2>
 
 
 
+                    {
+                        wordInfo.found ?
+
+                        <>
 
 
-                    <p>
+                        <p>
+                            Lemma:
+                            {" "}
+                            {
+                                wordInfo.data.lemma
+                            }
+                        </p>
 
-                        <b>
-                        Lemma:
-                        </b>
 
 
-                        {" "}
+                        <p>
+                            POS:
+                            {" "}
+                            {
+                                wordInfo.data.pos || "-"
+                            }
+                        </p>
 
-                        {
-                            wordInfo.lemma || "-"
+
+
+                        <p>
+                            CEFR:
+                            {" "}
+                            {
+                                wordInfo.data.cefr || "-"
+                            }
+                        </p>
+
+
+
+                        <p>
+                            Definition:
+                            {" "}
+                            {
+                                wordInfo.data.definition || "-"
+                            }
+                        </p>
+
+
+
+                        <p>
+                            Translation:
+                            {" "}
+                            {
+                                wordInfo.data.translations?.en || "-"
+                            }
+                        </p>
+
+
+
+                        <button
+
+                        onClick={
+                            addVocabulary
                         }
 
+                        >
 
-                    </p>
+                            Add Vocabulary
 
-
-
-
-
-                    <p>
-
-                        <b>
-                        Definition:
-                        </b>
+                        </button>
 
 
-                        <br/>
+                        </>
 
 
-                        {
-                            wordInfo.definition ||
-                            "-"
-                        }
+                        :
 
 
-                    </p>
+                        <p>
+                            Word not found.
+                        </p>
 
-
-
-
-
-                    <p>
-
-                        <b>
-                        Translation:
-                        </b>
-
-
-                        <br/>
-
-
-                        {
-
-                        wordInfo.translations?.en ||
-
-                        "-"
-
-                        }
-
-
-                    </p>
-
-
-
-
-
-                    <p>
-
-                        <b>
-                        CEFR:
-                        </b>
-
-
-                        {" "}
-
-
-                        {
-                            wordInfo.cefr || "-"
-                        }
-
-
-                    </p>
-
-
-
-
-
-                    <p>
-
-                        <b>
-                        POS:
-                        </b>
-
-
-                        {" "}
-
-
-                        {
-                            wordInfo.pos || "-"
-                        }
-
-
-                    </p>
-
-
-
-
-
-                    <button
-
-                    onClick={
-                        addVocabulary
                     }
-
-                    >
-
-                        Add to Vocabulary
-
-                    </button>
-
 
 
 
                 </div>
 
-
-            )
-
+                )
 
             }
-
-
-
-            </div>
-
-
-
 
 
 
@@ -839,7 +759,6 @@ function ReadingDetail(){
 
 
 }
-
 
 
 export default ReadingDetail;
