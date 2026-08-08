@@ -5,20 +5,26 @@ from ..db import SessionLocal
 
 from ..models_db import (
     VocabularyDB,
+    VocabularyTranslationDB,
     ReadingWordDB,
     ReadingSentenceDB,
-    FlashcardDB,
-    DictionaryEntryDB
+    DictionaryEntryDB,
+    DictionaryTranslationDB,
+    FlashcardDB
 )
+
 
 
 router = APIRouter()
 
 
 
-# =========================
+
+
+# =====================================================
 # Request Model
-# =========================
+# =====================================================
+
 
 class VocabCreate(BaseModel):
 
@@ -26,52 +32,181 @@ class VocabCreate(BaseModel):
 
     lemma: str | None = None
 
-    definition: str | None = None
-
-    cefr: str | None = None
+    source_language: str = "de"
 
     workspace_id: int | None = None
 
 
 
 
-# =========================
-# Manual add vocabulary
-# =========================
 
-@router.post("")
-def create_vocab(
-    body: VocabCreate
+
+
+# =====================================================
+# Helper:
+# get dictionary translation
+# =====================================================
+
+
+def _get_translation(
+    dictionary_id: int,
+    language: str = "en"
 ):
+
 
     session = SessionLocal()
 
 
     try:
 
-        word = body.word.lower().strip()
+
+        result = (
+
+            session.query(
+                DictionaryTranslationDB
+            )
+
+            .filter(
+                DictionaryTranslationDB.dictionary_id
+                ==
+                dictionary_id
+            )
+
+            .filter(
+                DictionaryTranslationDB.language
+                ==
+                language
+            )
+
+            .first()
+
+        )
+
+
+        if result:
+
+            return result.translation
+
+
+        return None
+
+
+    finally:
+
+        session.close()
 
 
 
-        existing = session.query(
-            VocabularyDB
-        ).filter(
-            VocabularyDB.word == word
-        ).first()
+
+
+
+
+# =====================================================
+# Manual add vocabulary
+# =====================================================
+
+
+@router.post("")
+def create_vocab(
+    body: VocabCreate
+):
+
+
+    session = SessionLocal()
+
+
+    try:
+
+
+        word = body.word.strip()
+
+
+
+        lemma = (
+
+            body.lemma
+
+            if body.lemma
+
+            else word.lower()
+
+        )
+
+
+
+        # =========================
+        # duplicate by lemma
+        # =========================
+
+
+        existing = (
+
+            session.query(
+                VocabularyDB
+            )
+
+            .filter(
+                VocabularyDB.lemma
+                ==
+                lemma
+            )
+
+            .filter(
+                VocabularyDB.source_language
+                ==
+                body.source_language
+            )
+
+            .first()
+
+        )
 
 
 
         if existing:
 
+
             return {
 
-                "message": "already exists",
+                "message":
+                    "already exists",
 
-                "id": existing.id,
-
-                "word": existing.word
+                "id":
+                    existing.id
 
             }
+
+
+
+
+
+
+        # =========================
+        # dictionary lookup
+        # =========================
+
+
+        dictionary = (
+
+            session.query(
+                DictionaryEntryDB
+            )
+
+            .filter(
+                DictionaryEntryDB.lemma
+                ==
+                lemma
+            )
+
+            .filter(
+                DictionaryEntryDB.language
+                ==
+                body.source_language
+            )
+
+            .first()
+
+        )
 
 
 
@@ -79,34 +214,99 @@ def create_vocab(
 
             word=word,
 
-            lemma=body.lemma,
+            lemma=lemma,
 
-            definition=body.definition,
+            source_language=
+                body.source_language,
 
-            cefr=body.cefr,
+            dictionary_id=
+                dictionary.id
+                if dictionary
+                else None,
 
             source="manual",
 
-            workspace_id=body.workspace_id
+            workspace_id=
+                body.workspace_id
 
         )
 
 
-        session.add(vocab)
+
+        session.add(
+            vocab
+        )
+
+
+        session.flush()
+
+
+
+        if dictionary:
+
+
+            translation = _get_translation(
+
+                dictionary.id,
+
+                "en"
+
+            )
+
+
+            if translation:
+
+
+                session.add(
+
+                    VocabularyTranslationDB(
+
+                        vocabulary_id=vocab.id,
+
+                        language="en",
+
+                        translation=translation
+
+                    )
+
+                )
+
+
+
+                session.add(
+
+                    FlashcardDB(
+
+                        front=word,
+
+                        back=translation,
+
+                        vocabulary_id=vocab.id
+
+                    )
+
+                )
+
+
 
         session.commit()
 
-        session.refresh(vocab)
 
+        session.refresh(
+            vocab
+        )
 
 
         return {
 
-            "message":"added",
+            "message":
+                "added",
 
-            "id":vocab.id,
+            "id":
+                vocab.id,
 
-            "word":vocab.word
+            "lemma":
+                vocab.lemma
 
         }
 
@@ -118,11 +318,15 @@ def create_vocab(
 
 
 
-# =========================
-# Add from reading
-# =========================
 
-@router.post("from-reading")
+
+
+# =====================================================
+# Add from reading
+# =====================================================
+
+
+@router.post("/from-reading")
 def add_from_reading(
     body: dict
 ):
@@ -141,11 +345,12 @@ def add_from_reading(
 
     if not word or not reading_id:
 
+
         raise HTTPException(
 
-            status_code=400,
+            400,
 
-            detail="word and reading_id required"
+            "word and reading_id required"
 
         )
 
@@ -158,13 +363,10 @@ def add_from_reading(
     try:
 
 
-        word = word.lower().strip()
+        # =========================
+        # find lemma from reading
+        # =========================
 
-
-
-        # =====================
-        # Find word in reading
-        # =====================
 
         reading_word = (
 
@@ -177,11 +379,15 @@ def add_from_reading(
             )
 
             .filter(
-                ReadingSentenceDB.reading_id == reading_id
+                ReadingSentenceDB.reading_id
+                ==
+                reading_id
             )
 
             .filter(
-                ReadingWordDB.word == word
+                ReadingWordDB.word
+                ==
+                word
             )
 
             .first()
@@ -190,76 +396,97 @@ def add_from_reading(
 
 
 
-        lemma = word
+        lemma = (
+
+            reading_word.lemma
+
+            if reading_word
+
+            else word.lower()
+
+        )
 
 
 
-        if reading_word and reading_word.lemma:
-
-            lemma = reading_word.lemma
 
 
 
+        # =========================
+        # duplicate
+        # =========================
 
-        # =====================
-        # Duplicate check
-        # =====================
 
-        existing = session.query(
-            VocabularyDB
-        ).filter(
-            VocabularyDB.word == word
-        ).first()
+        existing = (
+
+            session.query(
+                VocabularyDB
+            )
+
+            .filter(
+                VocabularyDB.lemma
+                ==
+                lemma
+            )
+
+            .filter(
+                VocabularyDB.source_language
+                ==
+                "de"
+            )
+
+            .first()
+
+        )
 
 
 
         if existing:
 
+
             return {
 
-                "message":"already exists",
+                "message":
+                    "already exists",
 
-                "id":existing.id,
-
-                "word":existing.word
+                "id":
+                    existing.id
 
             }
 
 
 
 
-        # =====================
-        # Dictionary lookup
-        # =====================
-
-        dictionary = session.query(
-            DictionaryEntryDB
-        ).filter(
-
-            DictionaryEntryDB.word == lemma
-
-        ).first()
 
 
 
-        definition = None
-
-        cefr = None
-
-
-
-        if dictionary:
-
-            definition = dictionary.definition
-
-            cefr = dictionary.cefr
+        # =========================
+        # dictionary
+        # =========================
 
 
+        dictionary = (
+
+            session.query(
+                DictionaryEntryDB
+            )
+
+            .filter(
+                DictionaryEntryDB.lemma
+                ==
+                lemma
+            )
+
+            .filter(
+                DictionaryEntryDB.language
+                ==
+                "de"
+            )
+
+            .first()
+
+        )
 
 
-        # =====================
-        # Create vocabulary
-        # =====================
 
         vocab = VocabularyDB(
 
@@ -267,9 +494,16 @@ def add_from_reading(
 
             lemma=lemma,
 
-            definition=definition,
+            source_language="de",
 
-            cefr=cefr,
+            dictionary_id=
+
+                dictionary.id
+
+                if dictionary
+
+                else None,
+
 
             source="reading",
 
@@ -279,31 +513,69 @@ def add_from_reading(
 
 
 
-        session.add(vocab)
+        session.add(
+            vocab
+        )
+
 
         session.flush()
 
 
 
 
-        # =====================
-        # Create flashcard
-        # =====================
-
-        flashcard = FlashcardDB(
-
-            front=word,
-
-            back=definition or "",
-
-            status="learning",
-
-            vocabulary_id=vocab.id
-
-        )
 
 
-        session.add(flashcard)
+        translation = None
+
+
+
+        if dictionary:
+
+
+            translation = _get_translation(
+
+                dictionary.id,
+
+                "en"
+
+            )
+
+
+
+        if translation:
+
+
+            session.add(
+
+                VocabularyTranslationDB(
+
+                    vocabulary_id=vocab.id,
+
+                    language="en",
+
+                    translation=translation
+
+                )
+
+            )
+
+
+
+            session.add(
+
+                FlashcardDB(
+
+                    front=word,
+
+                    back=translation,
+
+                    vocabulary_id=vocab.id
+
+                )
+
+            )
+
+
 
 
 
@@ -311,28 +583,26 @@ def add_from_reading(
 
 
 
-        session.refresh(
-            vocab
-        )
-
-
-
         return {
 
-            "message":"added",
+            "message":
+                "added",
 
-            "id":vocab.id,
+            "id":
+                vocab.id,
 
-            "word":vocab.word,
+            "word":
+                word,
 
-            "definition":definition,
+            "lemma":
+                lemma,
 
-            "cefr":cefr
+            "translation":
+                translation
 
         }
 
 
-
     finally:
 
         session.close()
@@ -340,47 +610,90 @@ def add_from_reading(
 
 
 
-# =========================
-# Get all vocabulary
-# =========================
+
+
+
+# =====================================================
+# Get vocabulary list
+# =====================================================
+
 
 @router.get("")
 def get_vocabularies():
 
+
     session = SessionLocal()
 
 
     try:
 
-        items = session.query(
-            VocabularyDB
-        ).order_by(
-            VocabularyDB.id.desc()
-        ).all()
+
+        items = (
+
+            session.query(
+                VocabularyDB
+            )
+
+            .order_by(
+                VocabularyDB.id.desc()
+            )
+
+            .all()
+
+        )
 
 
 
-        return [
+        result = []
 
-            {
 
-                "id":item.id,
 
-                "word":item.word,
+        for item in items:
 
-                "lemma":item.lemma,
 
-                "definition":item.definition,
+            translations = [
 
-                "cefr":item.cefr,
+                {
 
-                "source":item.source
+                    "language":t.language,
 
-            }
+                    "translation":t.translation
 
-            for item in items
+                }
 
-        ]
+                for t in item.translations
+
+            ]
+
+
+
+            result.append(
+
+                {
+
+                    "id":
+                        item.id,
+
+                    "word":
+                        item.word,
+
+                    "lemma":
+                        item.lemma,
+
+                    "source_language":
+                        item.source_language,
+
+                    "translations":
+                        translations
+
+                }
+
+            )
+
+
+
+        return result
+
 
 
     finally:
@@ -390,38 +703,51 @@ def get_vocabularies():
 
 
 
-# =========================
-# Get one word
-# =========================
 
-@router.get("{word}")
+
+
+# =====================================================
+# Get one vocabulary
+# =====================================================
+
+
+@router.get("/{word}")
 def get_vocab(
     word:str
 ):
 
-    session = SessionLocal()
 
+    session = SessionLocal()
 
 
     try:
 
-        vocab = session.query(
-            VocabularyDB
-        ).filter(
 
-            VocabularyDB.word == word.lower()
+        vocab = (
 
-        ).first()
+            session.query(
+                VocabularyDB
+            )
 
+            .filter(
+                VocabularyDB.lemma
+                ==
+                word.lower()
+            )
+
+            .first()
+
+        )
 
 
         if not vocab:
 
+
             raise HTTPException(
 
-                status_code=404,
+                404,
 
-                detail="vocabulary not found"
+                "vocabulary not found"
 
             )
 
@@ -429,15 +755,34 @@ def get_vocab(
 
         return {
 
-            "id":vocab.id,
 
-            "word":vocab.word,
+            "id":
+                vocab.id,
 
-            "lemma":vocab.lemma,
 
-            "definition":vocab.definition,
+            "word":
+                vocab.word,
 
-            "cefr":vocab.cefr
+
+            "lemma":
+                vocab.lemma,
+
+
+            "translations":
+
+                [
+
+                    {
+
+                    "language":t.language,
+
+                    "translation":t.translation
+
+                    }
+
+                    for t in vocab.translations
+
+                ]
 
         }
 
@@ -450,38 +795,51 @@ def get_vocab(
 
 
 
-# =========================
-# Delete vocabulary
-# =========================
 
-@router.delete("{word}")
+
+
+# =====================================================
+# Delete vocabulary
+# =====================================================
+
+
+@router.delete("/{word}")
 def delete_vocab(
     word:str
 ):
 
-    session = SessionLocal()
 
+    session = SessionLocal()
 
 
     try:
 
-        vocab = session.query(
-            VocabularyDB
-        ).filter(
 
-            VocabularyDB.word == word.lower()
+        vocab = (
 
-        ).first()
+            session.query(
+                VocabularyDB
+            )
 
+            .filter(
+                VocabularyDB.lemma
+                ==
+                word.lower()
+            )
+
+            .first()
+
+        )
 
 
         if not vocab:
 
+
             raise HTTPException(
 
-                status_code=404,
+                404,
 
-                detail="vocabulary not found"
+                "vocabulary not found"
 
             )
 
@@ -491,18 +849,20 @@ def delete_vocab(
             vocab
         )
 
+
         session.commit()
 
 
 
         return {
 
-            "message":"deleted",
+            "message":
+                "deleted",
 
-            "word":word.lower()
+            "lemma":
+                word.lower()
 
         }
-
 
 
     finally:

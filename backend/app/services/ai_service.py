@@ -1,66 +1,126 @@
 import json
 from typing import List
 
+
 from app.ai.factory import get_ai_provider
 
+
+
+
+
+# =====================================================
+# Build prompt
+# =====================================================
 
 
 def _build_prompt(
     topic: str,
     difficulty: str,
+    source_language: str,
+    translation_language: str,
     known_vocabulary: List[str]
 ) -> str:
 
 
     vocab_part = ""
 
+
     if known_vocabulary:
 
-        vocab_part = (
-            "Try to naturally include these known words if possible: "
-            + ", ".join(known_vocabulary)
-            + ".\n"
-        )
+        vocab_part = f"""
+Try to naturally include these vocabulary items:
+
+{", ".join(known_vocabulary)}
+
+"""
+
 
 
     return f"""
+
 You are an AI language learning assistant.
 
+
 Generate a reading article for language learners.
+
+
+Learning mode:
+
+Source language:
+{source_language}
+
+
+Translation language:
+{translation_language}
+
 
 Level:
 {difficulty}
 
+
 Topic:
 {topic}
 
+
+
 {vocab_part}
+
+
 
 Requirements:
 
-1. Create an interesting and natural title.
-2. Write a reading article suitable for {difficulty} learners.
-3. Article length:
-   - 3 to 5 paragraphs
-   - Around 250-350 words
-4. Extract 8-12 useful vocabulary items.
-5. Vocabulary should match the article.
-6. Return ONLY JSON.
-7. Do NOT use markdown.
-8. Do NOT add explanations.
 
-Return exactly this JSON structure:
+1. Generate the article in the source language.
+
+2. The article should be suitable for {difficulty} learners.
+
+3. Create a natural and interesting title.
+
+4. Article length:
+- 3 to 5 paragraphs
+- Around 250-350 words
+
+
+5. Extract 8-12 useful vocabulary words from the article.
+
+6. Vocabulary should be in the source language.
+
+7. Return ONLY JSON.
+
+8. Do NOT use markdown.
+
+9. Do NOT add explanations.
+
+
+
+Return exactly this structure:
+
 
 {{
-    "title": "Example title",
+    "title": "Article title",
+
     "content": "Article content",
+
     "vocabulary": [
+
         "word1",
+
         "word2"
+
     ]
 }}
+
+
 """
 
+
+
+
+
+
+# =====================================================
+# Remove markdown fences
+# =====================================================
 
 
 def _strip_code_fences(
@@ -76,7 +136,7 @@ def _strip_code_fences(
     text = text.strip()
 
 
-    # remove ```json
+
     if text.startswith("```"):
 
 
@@ -86,16 +146,27 @@ def _strip_code_fences(
         lines = lines[1:]
 
 
+
         if lines and lines[-1].strip() == "```":
 
             lines = lines[:-1]
 
 
+
         text = "\n".join(lines)
+
 
 
     return text.strip()
 
+
+
+
+
+
+# =====================================================
+# Extract JSON
+# =====================================================
 
 
 def _extract_json(
@@ -103,12 +174,10 @@ def _extract_json(
 ) -> dict:
 
 
-    """
-    Extract JSON object from AI response.
-    """
+    text = _strip_code_fences(
+        text
+    )
 
-
-    text = _strip_code_fences(text)
 
 
     try:
@@ -116,25 +185,26 @@ def _extract_json(
         return json.loads(text)
 
 
+
     except json.JSONDecodeError:
 
 
-        # try extracting {...}
 
         start = text.find("{")
 
         end = text.rfind("}")
 
 
+
         if start != -1 and end != -1:
 
 
-            json_text = text[start:end + 1]
-
-
             return json.loads(
-                json_text
+
+                text[start:end+1]
+
             )
+
 
 
         raise
@@ -142,21 +212,42 @@ def _extract_json(
 
 
 
+
+
+# =====================================================
+# Generate Reading
+# =====================================================
+
+
 def generate_reading(
     topic: str,
     difficulty: str,
+    source_language: str,
+    translation_language: str,
     known_vocabulary: List[str]
 ) -> dict:
 
 
-    print("[AI] Generating reading...")
+
+    print(
+        "[AI] Generating reading"
+    )
 
 
     prompt = _build_prompt(
+
         topic,
+
         difficulty,
+
+        source_language,
+
+        translation_language,
+
         known_vocabulary
+
     )
+
 
 
     try:
@@ -165,28 +256,35 @@ def generate_reading(
         provider = get_ai_provider()
 
 
+
         response = provider.generate(
+
             prompt
+
         )
+
 
 
         print(
-            "[AI] Raw response received"
+            "[AI] Response received"
         )
+
 
 
         result = _extract_json(
+
             response
+
         )
 
 
-        # validation
 
         if not result.get("title"):
 
             raise ValueError(
                 "Missing title"
             )
+
 
 
         if not result.get("content"):
@@ -196,42 +294,51 @@ def generate_reading(
             )
 
 
+
+        vocabulary = result.get(
+            "vocabulary",
+            []
+        )
+
+
+
         if not isinstance(
-            result.get("vocabulary"),
+            vocabulary,
             list
         ):
 
-            result["vocabulary"] = []
+            vocabulary = []
 
-
-
-        print(
-            "[AI] JSON parsed successfully"
-        )
 
 
         return {
 
 
-            "title": result["title"],
+            "title":
+                result["title"],
 
 
-            "content": result["content"],
+
+            "content":
+                result["content"],
 
 
-            "vocabulary": result["vocabulary"][:12]
+
+            "vocabulary":
+                vocabulary[:12]
 
         }
 
 
 
-    except Exception as exc:
+    except Exception as e:
 
 
         print(
             "[AI ERROR]",
-            exc
+            e
         )
+
 
 
         # fallback
@@ -240,17 +347,30 @@ def generate_reading(
 
 
             "title":
-                f"{topic.title()} - Reading",
+                f"{topic.title()} Reading",
+
 
 
             "content":
+
+                (
+                    f"Dieser Text handelt von {topic}. "
+                    "Er wurde für Sprachlernende erstellt."
+                )
+
+                if source_language == "de"
+
+                else
+
                 (
                     f"This reading is about {topic}. "
-                    f"It is designed for {difficulty} learners."
+                    "It was created for language learners."
                 ),
 
 
+
             "vocabulary":
+
                 known_vocabulary[:10]
 
         }

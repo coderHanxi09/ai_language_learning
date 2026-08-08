@@ -2,26 +2,26 @@ import json
 from typing import Optional, List
 
 
-from nltk.corpus import wordnet as wn
-
-
 from ..db import SessionLocal
-from ..models_db import DictionaryEntryDB
+
+from ..models_db import (
+    DictionaryEntryDB,
+    DictionaryTranslationDB
+)
 
 
 
 
 
-# =========================
+# =====================================================
 # Parse examples
-# =========================
+# =====================================================
 
 def _parse_examples(
     examples
 ):
 
     if not examples:
-
         return []
 
 
@@ -29,156 +29,67 @@ def _parse_examples(
         examples,
         list
     ):
-
         return examples
 
 
     try:
-
         return json.loads(
             examples
         )
 
-
     except Exception:
-
         return []
 
 
 
 
 
-# =========================
-# Select WordNet meaning
-# =========================
 
-def _select_wordnet_synset(
-    word
+
+# =====================================================
+# Normalize language
+# =====================================================
+
+def _normalize_language(
+    language: str
 ):
 
-    synsets = wn.synsets(
-        word
-    )
+    if not language:
+        return "de"
 
 
-    if not synsets:
-
-        return None
+    language = language.lower()
 
 
-
-    priority = [
-
-        wn.ADJ,
-
-        wn.NOUN,
-
-        wn.VERB,
-
-        wn.ADV
-
-    ]
+    if language in [
+        "german",
+        "deutsch"
+    ]:
+        return "de"
 
 
-
-    for pos in priority:
-
-        for synset in synsets:
-
-            if synset.pos() == pos:
-
-                return synset
+    if language in [
+        "english",
+        "englisch"
+    ]:
+        return "en"
 
 
-
-    return synsets[0]
+    return language
 
 
 
 
 
-# =========================
-# WordNet fallback
-# =========================
 
-def _wordnet_lookup(
-    word
+# =====================================================
+# Database lookup
+# =====================================================
+
+def _database_lookup(
+    word: str,
+    language: str
 ):
-
-
-    synset = _select_wordnet_synset(
-        word
-    )
-
-
-    if not synset:
-
-        return None
-
-
-
-    pos_map = {
-
-        "n": "noun",
-
-        "v": "verb",
-
-        "a": "adjective",
-
-        "r": "adverb"
-
-    }
-
-
-
-    return {
-
-        "word": word,
-
-        "lemma":
-            synset.lemmas()[0]
-            .name()
-            .replace("_", " "),
-
-
-        "definition":
-            synset.definition(),
-
-
-        "pos":
-            pos_map.get(
-                synset.pos(),
-                ""
-            ),
-
-
-        "cefr":
-            None,
-
-
-        "ipa":
-            None,
-
-
-        "examples":
-            synset.examples()
-
-    }
-
-
-
-
-
-# =========================
-# Single word lookup
-# =========================
-
-def lookup_word(
-    word: str
-) -> Optional[dict]:
-
-
-    word = word.strip().lower()
 
 
     session = SessionLocal()
@@ -186,89 +97,84 @@ def lookup_word(
 
     try:
 
-
         entry = session.query(
             DictionaryEntryDB
         ).filter(
-            DictionaryEntryDB.word.ilike(word)
+            DictionaryEntryDB.lemma.ilike(word),
+            DictionaryEntryDB.language == language
         ).first()
 
 
 
-        if entry:
+        if not entry:
 
 
-            return {
-
-                "word":
-                    entry.word,
-
-                "lemma":
-                    entry.lemma,
-
-                "definition":
-                    entry.definition,
-
-                "pos":
-                    entry.pos,
-
-                "cefr":
-                    entry.cefr,
-
-                "ipa":
-                    entry.ipa,
-
-                "examples":
-                    _parse_examples(
-                        entry.examples
-                    )
-
-            }
+            entry = session.query(
+                DictionaryEntryDB
+            ).filter(
+                DictionaryEntryDB.word.ilike(word),
+                DictionaryEntryDB.language == language
+            ).first()
 
 
 
-        result = _wordnet_lookup(
-            word
-        )
-
-
-        if not result:
+        if not entry:
 
             return None
 
 
 
-        new_entry = DictionaryEntryDB(
 
-            word=result["word"],
-
-            lemma=result["lemma"],
-
-            definition=result["definition"],
-
-            pos=result["pos"],
-
-            cefr=result["cefr"],
-
-            ipa=result["ipa"],
-
-            examples=json.dumps(
-                result["examples"],
-                ensure_ascii=False
-            )
-
-        )
+        translations = {}
 
 
-        session.add(
-            new_entry
-        )
+        for t in entry.translations:
 
-        session.commit()
+            translations[
+                t.language
+            ] = t.translation
 
 
 
-        return result
+
+
+        return {
+
+
+            "word":
+                entry.word,
+
+
+            "lemma":
+                entry.lemma,
+
+
+            "language":
+                entry.language,
+
+
+            "pos":
+                entry.pos,
+
+
+            "cefr":
+                entry.cefr,
+
+
+            "ipa":
+                entry.ipa,
+
+
+            "examples":
+                _parse_examples(
+                    entry.examples
+                ),
+
+
+            "translations":
+                translations
+
+        }
 
 
 
@@ -280,17 +186,362 @@ def lookup_word(
 
 
 
-# =========================
-# Multiple word lookup
-# =========================
 
-def lookup_words(
-    words: List[str]
+
+# =====================================================
+# German fallback dictionary
+# =====================================================
+
+def _german_fallback(
+    word: str
 ):
 
     """
-    Batch dictionary lookup.
+    Temporary fallback.
+
+    Later can replace with:
+    - Wiktionary API
+    - DWDS API
+    - dict.cc API
+    - LLM dictionary generation
     """
+
+
+
+    common_words = {
+
+
+        "technologie": {
+
+            "translation":
+                "technology",
+
+            "pos":
+                "noun",
+
+            "cefr":
+                "B1"
+
+        },
+
+
+        "innovation": {
+
+            "translation":
+                "innovation",
+
+            "pos":
+                "noun",
+
+            "cefr":
+                "B2"
+
+        },
+
+
+        "entwicklung": {
+
+            "translation":
+                "development",
+
+            "pos":
+                "noun",
+
+            "cefr":
+                "B2"
+
+        },
+
+
+        "entscheidung": {
+
+            "translation":
+                "decision",
+
+            "pos":
+                "noun",
+
+            "cefr":
+                "B2"
+
+        }
+
+
+    }
+
+
+
+    data = common_words.get(
+        word.lower()
+    )
+
+
+
+    if not data:
+
+        return None
+
+
+
+
+    return {
+
+
+        "word":
+            word,
+
+
+        "lemma":
+            word,
+
+
+        "language":
+            "de",
+
+
+        "pos":
+            data["pos"],
+
+
+        "cefr":
+            data["cefr"],
+
+
+        "ipa":
+            None,
+
+
+        "examples":
+            [],
+
+
+        "translations":
+
+            {
+
+                "en":
+                    data["translation"]
+
+            }
+
+    }
+
+
+
+
+
+
+
+# =====================================================
+# Save dictionary entry
+# =====================================================
+
+def _save_dictionary_entry(
+    data: dict
+):
+
+
+    session = SessionLocal()
+
+
+    try:
+
+
+        existing = session.query(
+            DictionaryEntryDB
+        ).filter(
+            DictionaryEntryDB.lemma == data["lemma"],
+            DictionaryEntryDB.language == data["language"]
+        ).first()
+
+
+
+        if existing:
+
+            return existing.id
+
+
+
+
+        entry = DictionaryEntryDB(
+
+            word=data["word"],
+
+            lemma=data["lemma"],
+
+            language=data["language"],
+
+            pos=data.get(
+                "pos"
+            ),
+
+            cefr=data.get(
+                "cefr"
+            ),
+
+            ipa=data.get(
+                "ipa"
+            ),
+
+            examples=json.dumps(
+                data.get(
+                    "examples",
+                    []
+                ),
+                ensure_ascii=False
+            )
+
+        )
+
+
+
+        session.add(
+            entry
+        )
+
+
+        session.flush()
+
+
+
+        translations = data.get(
+            "translations",
+            {}
+        )
+
+
+
+        for lang, text in translations.items():
+
+
+            translation = DictionaryTranslationDB(
+
+                dictionary_id=entry.id,
+
+                language=lang,
+
+                translation=text
+
+            )
+
+
+            session.add(
+                translation
+            )
+
+
+
+        session.commit()
+
+
+
+        return entry.id
+
+
+
+    except Exception:
+
+
+        session.rollback()
+
+        raise
+
+
+
+    finally:
+
+        session.close()
+
+
+
+
+
+
+
+# =====================================================
+# Single word lookup
+# =====================================================
+
+def lookup_word(
+    word: str,
+    language: str = "de"
+) -> Optional[dict]:
+
+
+    word = word.strip()
+
+
+    if not word:
+
+        return None
+
+
+
+    language = _normalize_language(
+        language
+    )
+
+
+
+    # 1. database
+
+    result = _database_lookup(
+        word,
+        language
+    )
+
+
+
+    if result:
+
+        return result
+
+
+
+
+
+    # 2. fallback
+
+    if language == "de":
+
+
+        result = _german_fallback(
+            word
+        )
+
+
+
+        if result:
+
+
+            _save_dictionary_entry(
+                result
+            )
+
+
+            return result
+
+
+
+
+
+    return None
+
+
+
+
+
+
+
+# =====================================================
+# Batch lookup
+# =====================================================
+
+def lookup_words(
+    words: List[str],
+    language: str = "de"
+):
+
 
     result = {}
 
@@ -298,8 +549,10 @@ def lookup_words(
 
     for word in words:
 
+
         data = lookup_word(
-            word
+            word,
+            language
         )
 
 

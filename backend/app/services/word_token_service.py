@@ -1,59 +1,217 @@
 import spacy
-
-
-# =========================
-# Load spaCy model
-# =========================
-
-nlp = spacy.load(
-    "en_core_web_sm"
-)
+from functools import lru_cache
 
 
 
-# =========================
-# Tokenize sentence
-# =========================
 
-def tokenize_sentence(
-    sentence: str
+# =====================================================
+# Load NLP model by language
+# =====================================================
+
+@lru_cache(maxsize=5)
+def get_nlp(
+    language: str
 ):
 
-    doc = nlp(sentence)
+    """
+    Load spaCy model.
+
+    Supported:
+
+    de -> German
+    en -> English
+
+    """
 
 
-    tokens = []
+    if language == "de":
+
+        return spacy.load(
+            "de_core_news_sm"
+        )
+
+
+    elif language == "en":
+
+        return spacy.load(
+            "en_core_web_sm"
+        )
+
+
+    else:
+
+        raise ValueError(
+            f"Unsupported language: {language}"
+        )
+
+
+
+
+
+
+# =====================================================
+# Analyze sentence
+# =====================================================
+
+def analyze_sentence(
+    sentence: str,
+    language: str = "de"
+):
+
+    """
+    Analyze sentence.
+
+    Example German:
+
+    Entscheidungsmöglichkeiten
+
+    ->
+    
+    {
+        word:
+        lemma:
+        pos:
+    }
+
+    """
+
+
+    nlp = get_nlp(
+        language
+    )
+
+
+    doc = nlp(
+        sentence
+    )
+
+
+    result = []
 
 
     for token in doc:
 
+
         # ignore punctuation
-        if not token.is_punct:
+        if token.is_punct:
 
-            tokens.append(
-                token.text
-            )
+            continue
 
 
-    return tokens
+        # ignore spaces
+        if token.is_space:
+
+            continue
+
+
+
+        if not token.is_alpha:
+
+            continue
+
+
+
+        result.append(
+
+            {
+
+                "word":
+                    token.text,
+
+
+                "lemma":
+                    token.lemma_.lower(),
+
+
+                "pos":
+                    token.pos_
+
+            }
+
+        )
+
+
+    return result
 
 
 
 
 
-# =========================
-# Normalize word
-# =========================
 
-def normalize_word(
-    word: str
+
+# =====================================================
+# Tokenize sentence
+# =====================================================
+
+def tokenize_sentence(
+    sentence: str,
+    language: str = "de"
 ):
 
-    doc = nlp(word)
+    """
+    Return analyzed tokens.
+
+    Used by reading pipeline.
+
+    """
 
 
-    if len(doc) == 0:
+    return analyze_sentence(
+
+        sentence,
+
+        language
+
+    )
+
+
+
+
+
+
+
+# =====================================================
+# Normalize word
+# =====================================================
+
+def normalize_word(
+    word: str,
+    language: str = "de"
+):
+
+    """
+    Convert word to lemma.
+
+    Example:
+
+    German:
+
+    gegangen -> gehen
+
+    Wörter -> wort
+
+
+    English:
+
+    running -> run
+
+    """
+
+
+    nlp = get_nlp(
+        language
+    )
+
+
+    doc = nlp(
+        word
+    )
+
+
+    if not doc:
+
         return word.lower()
+
 
 
     return doc[0].lemma_.lower()

@@ -5,7 +5,8 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     Index,
-    DateTime
+    DateTime,
+    UniqueConstraint
 )
 
 from sqlalchemy.orm import relationship
@@ -16,9 +17,9 @@ from .db import Base
 
 
 
-# =========================
-# Dictionary
-# =========================
+# =====================================================
+# Dictionary Entry
+# =====================================================
 
 class DictionaryEntryDB(Base):
 
@@ -32,21 +33,30 @@ class DictionaryEntryDB(Base):
     )
 
 
+    # original word
+    # e.g. Entscheidung
     word = Column(
         String(128),
-        unique=True,
-        index=True,
-        nullable=False
+        nullable=False,
+        index=True
     )
 
 
+    # base form
+    # e.g. Entscheidung
     lemma = Column(
-        String(128)
+        String(128),
+        nullable=False,
+        index=True
     )
 
 
-    definition = Column(
-        Text
+    # language of word
+    # en / de
+    language = Column(
+        String(16),
+        nullable=False,
+        default="en"
     )
 
 
@@ -70,11 +80,94 @@ class DictionaryEntryDB(Base):
     )
 
 
+    translations = relationship(
+        "DictionaryTranslationDB",
+        back_populates="dictionary",
+        cascade="all, delete-orphan"
+    )
 
 
-# =========================
+    __table_args__ = (
+
+        UniqueConstraint(
+            "lemma",
+            "language",
+            name="unique_dictionary_language_lemma"
+        ),
+
+    )
+
+
+
+
+
+# =====================================================
+# Dictionary Translation
+# =====================================================
+
+class DictionaryTranslationDB(Base):
+
+    __tablename__ = "dictionary_translations"
+
+
+    id = Column(
+        Integer,
+        primary_key=True
+    )
+
+
+    dictionary_id = Column(
+        Integer,
+        ForeignKey(
+            "dictionary_entries.id"
+        ),
+        nullable=False
+    )
+
+
+    # target language
+    # en / zh
+    language = Column(
+        String(16),
+        nullable=False
+    )
+
+
+    translation = Column(
+        Text,
+        nullable=False
+    )
+
+
+    examples = Column(
+        Text
+    )
+
+
+    dictionary = relationship(
+        "DictionaryEntryDB",
+        back_populates="translations"
+    )
+
+
+    __table_args__ = (
+
+        UniqueConstraint(
+            "dictionary_id",
+            "language",
+            name="unique_dictionary_translation_language"
+        ),
+
+    )
+
+
+
+
+
+
+# =====================================================
 # Reading
-# =========================
+# =====================================================
 
 class ReadingDB(Base):
 
@@ -101,6 +194,24 @@ class ReadingDB(Base):
     difficulty = Column(
         String(32),
         default="B2"
+    )
+
+
+    # language of article
+    # en / de
+    source_language = Column(
+        String(16),
+        nullable=False,
+        default="en"
+    )
+
+
+    # translation language
+    # zh / en
+    translation_language = Column(
+        String(16),
+        nullable=False,
+        default="zh"
     )
 
 
@@ -133,7 +244,6 @@ class ReadingDB(Base):
     )
 
 
-    # 用户从这篇文章收藏的词
     vocabulary_items = relationship(
         "VocabularyDB",
         back_populates="reading"
@@ -142,9 +252,11 @@ class ReadingDB(Base):
 
 
 
-# =========================
+
+
+# =====================================================
 # Reading Sentence
-# =========================
+# =====================================================
 
 class ReadingSentenceDB(Base):
 
@@ -199,9 +311,11 @@ class ReadingSentenceDB(Base):
 
 
 
-# =========================
-# Reading Words
-# =========================
+
+
+# =====================================================
+# Reading Word
+# =====================================================
 
 class ReadingWordDB(Base):
 
@@ -232,7 +346,13 @@ class ReadingWordDB(Base):
 
     lemma = Column(
         String(128),
+        nullable=False,
         index=True
+    )
+
+
+    pos = Column(
+        String(32)
     )
 
 
@@ -250,9 +370,11 @@ class ReadingWordDB(Base):
 
 
 
-# =========================
+
+
+# =====================================================
 # Workspace
-# =========================
+# =====================================================
 
 class WorkspaceDB(Base):
 
@@ -261,8 +383,7 @@ class WorkspaceDB(Base):
 
     id = Column(
         Integer,
-        primary_key=True,
-        index=True
+        primary_key=True
     )
 
 
@@ -285,9 +406,12 @@ class WorkspaceDB(Base):
 
 
 
-# =========================
+
+
+
+# =====================================================
 # User Vocabulary
-# =========================
+# =====================================================
 
 class VocabularyDB(Base):
 
@@ -296,26 +420,40 @@ class VocabularyDB(Base):
 
     id = Column(
         Integer,
-        primary_key=True,
-        index=True
+        primary_key=True
     )
 
 
+    # displayed word
+    # Entscheidung
     word = Column(
+        String(128),
+        nullable=False
+    )
+
+
+    # learning key
+    # Entscheidung
+    lemma = Column(
         String(128),
         nullable=False,
         index=True
     )
 
 
-    lemma = Column(
-        String(128),
-        index=True
+    source_language = Column(
+        String(16),
+        nullable=False,
+        default="en"
     )
 
 
-    definition = Column(
-        Text
+    dictionary_id = Column(
+        Integer,
+        ForeignKey(
+            "dictionary_entries.id"
+        ),
+        nullable=True
     )
 
 
@@ -324,21 +462,12 @@ class VocabularyDB(Base):
     )
 
 
-    frequency = Column(
-        Integer,
-        default=0
-    )
-
-
-    # 来源
-    # manual / reading / ai
     source = Column(
         String(32),
-        default="manual"
+        default="reading"
     )
 
 
-    # 来自哪篇阅读
     reading_id = Column(
         Integer,
         ForeignKey(
@@ -357,15 +486,27 @@ class VocabularyDB(Base):
     )
 
 
+    reading = relationship(
+        "ReadingDB",
+        back_populates="vocabulary_items"
+    )
+
+
     workspace = relationship(
         "WorkspaceDB",
         back_populates="vocabulary_items"
     )
 
 
-    reading = relationship(
-        "ReadingDB",
-        back_populates="vocabulary_items"
+    dictionary = relationship(
+        "DictionaryEntryDB"
+    )
+
+
+    translations = relationship(
+        "VocabularyTranslationDB",
+        back_populates="vocabulary",
+        cascade="all, delete-orphan"
     )
 
 
@@ -378,10 +519,10 @@ class VocabularyDB(Base):
 
     __table_args__ = (
 
-        Index(
-            "ix_vocabulary_word_workspace",
-            "word",
-            "workspace_id"
+        UniqueConstraint(
+            "lemma",
+            "source_language",
+            name="unique_vocab_language_lemma"
         ),
 
     )
@@ -389,9 +530,68 @@ class VocabularyDB(Base):
 
 
 
-# =========================
+
+
+# =====================================================
+# Vocabulary Translation
+# =====================================================
+
+class VocabularyTranslationDB(Base):
+
+    __tablename__ = "vocabulary_translations"
+
+
+    id = Column(
+        Integer,
+        primary_key=True
+    )
+
+
+    vocabulary_id = Column(
+        Integer,
+        ForeignKey(
+            "vocabulary.id"
+        ),
+        nullable=False
+    )
+
+
+    language = Column(
+        String(16),
+        nullable=False
+    )
+
+
+    translation = Column(
+        Text,
+        nullable=False
+    )
+
+
+    vocabulary = relationship(
+        "VocabularyDB",
+        back_populates="translations"
+    )
+
+
+    __table_args__ = (
+
+        UniqueConstraint(
+            "vocabulary_id",
+            "language",
+            name="unique_vocab_translation_language"
+        ),
+
+    )
+
+
+
+
+
+
+# =====================================================
 # Flashcards
-# =========================
+# =====================================================
 
 class FlashcardDB(Base):
 
@@ -400,16 +600,19 @@ class FlashcardDB(Base):
 
     id = Column(
         Integer,
-        primary_key=True,
-        index=True
+        primary_key=True
     )
 
 
+    # front:
+    # German word
     front = Column(
         Text
     )
 
 
+    # back:
+    # English translation
     back = Column(
         Text
     )
@@ -425,8 +628,7 @@ class FlashcardDB(Base):
         Integer,
         ForeignKey(
             "vocabulary.id"
-        ),
-        nullable=True
+        )
     )
 
 
@@ -438,9 +640,12 @@ class FlashcardDB(Base):
 
 
 
-# =========================
+
+
+
+# =====================================================
 # User
-# =========================
+# =====================================================
 
 class UserDB(Base):
 
@@ -449,15 +654,13 @@ class UserDB(Base):
 
     id = Column(
         Integer,
-        primary_key=True,
-        index=True
+        primary_key=True
     )
 
 
     username = Column(
         String(128),
         unique=True,
-        index=True,
         nullable=False
     )
 
