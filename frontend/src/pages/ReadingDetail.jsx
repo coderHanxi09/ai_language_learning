@@ -29,6 +29,21 @@ function ReadingDetail(){
 
 
 
+    const [language,setLanguage] = useState(
+
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de"
+
+    );
+
+
+
+
+
+
 
 
     async function loadReading(){
@@ -38,12 +53,16 @@ function ReadingDetail(){
 
 
             const res = await api.get(
+
                 `/readings/${id}`
+
             );
 
 
             setData(
+
                 res.data
+
             );
 
 
@@ -54,10 +73,10 @@ function ReadingDetail(){
         }catch(error){
 
 
-            console.error(
-                error
-            );
+            console.error(error);
 
+
+            return null;
 
         }
 
@@ -69,14 +88,17 @@ function ReadingDetail(){
 
 
 
+
+
+
     useEffect(()=>{
 
 
-        let timer;
+        loadReading();
 
 
 
-        async function start(){
+        const timer = setInterval(async()=>{
 
 
             const status =
@@ -84,54 +106,93 @@ function ReadingDetail(){
 
 
 
-            if(status==="processing"){
+            if(status === "completed"){
 
-
-                timer=setInterval(
-                    async()=>{
-
-
-                        const newStatus =
-                            await loadReading();
-
-
-
-                        if(
-                            newStatus !== "processing"
-                        ){
-
-                            clearInterval(timer);
-
-                        }
-
-
-                    },
-                    3000
-                );
+                clearInterval(timer);
 
             }
 
 
-        }
+            if(status === "failed"){
+
+                clearInterval(timer);
+
+            }
 
 
-        start();
+        },3000);
+
+
 
 
 
         return ()=>{
 
 
-            if(timer){
+            clearInterval(timer);
 
-                clearInterval(timer);
-
-            }
 
         };
 
 
     },[id]);
+
+
+
+
+
+
+
+
+
+    useEffect(()=>{
+
+
+        function handleLanguageChange(){
+
+
+            setLanguage(
+
+                localStorage.getItem(
+                    "learningLanguage"
+                )
+                ||
+                "de"
+
+            );
+
+
+        }
+
+
+
+
+        window.addEventListener(
+
+            "languageChange",
+
+            handleLanguageChange
+
+        );
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "languageChange",
+
+                handleLanguageChange
+
+            );
+
+
+        };
+
+
+    },[]);
 
 
 
@@ -148,6 +209,7 @@ function ReadingDetail(){
 
 
             const cleanWord =
+
                 word
                 .replace(
                     /[.,!?;:"'()]/g,
@@ -158,20 +220,25 @@ function ReadingDetail(){
 
 
             setSelectedWord(
+
                 cleanWord
+
             );
 
 
 
-            const res =
-                await api.get(
-                    `/dictionary/${cleanWord}?language=${data.source_language}`
-                );
+            const res = await api.get(
+
+                `/dictionary/${cleanWord}?language=${data.source_language}`
+
+            );
 
 
 
             setWordInfo(
+
                 res.data
+
             );
 
 
@@ -218,7 +285,6 @@ function ReadingDetail(){
 
                 {
 
-
                     word:
                         wordInfo.data.word,
 
@@ -264,11 +330,6 @@ function ReadingDetail(){
             console.error(error);
 
 
-            alert(
-                "Failed to add vocabulary"
-            );
-
-
         }
 
 
@@ -297,6 +358,7 @@ function ReadingDetail(){
 
         );
 
+
     }
 
 
@@ -304,7 +366,10 @@ function ReadingDetail(){
 
 
 
-    if(data.status==="processing"){
+
+
+
+    if(data.status === "processing"){
 
 
         return (
@@ -319,17 +384,8 @@ function ReadingDetail(){
 
             >
 
-                <h1
 
-                style={{
-
-                    lineHeight:"1.6",
-
-                    fontSize:"28px"
-
-                }}
-
-                >
+                <h1>
 
                     Generating translation...
 
@@ -344,12 +400,14 @@ function ReadingDetail(){
                 </p>
 
 
+
             </div>
 
         );
 
 
     }
+
 
 
 
@@ -372,9 +430,7 @@ function ReadingDetail(){
 
             margin:"0 auto",
 
-            padding:"30px",
-
-            alignItems:"flex-start"
+            padding:"30px"
 
         }}
 
@@ -383,18 +439,11 @@ function ReadingDetail(){
 
 
 
-            {/* Article */}
-
-
             <main
 
             style={{
 
-                flex:1,
-
-                minWidth:0,
-
-                overflowWrap:"break-word"
+                flex:1
 
             }}
 
@@ -402,21 +451,8 @@ function ReadingDetail(){
 
 
 
-                <h1
 
-                style={{
-
-                    fontSize:"32px",
-
-                    lineHeight:"1.6",
-
-                    marginBottom:"20px",
-
-                    fontWeight:"700"
-
-                }}
-
-                >
+                <h1>
 
                     {data.title}
 
@@ -425,29 +461,21 @@ function ReadingDetail(){
 
 
 
-
-                <div
-
-                style={{
-
-                    marginBottom:"30px",
-
-                    color:"#555"
-
-                }}
-
-                >
+                <p>
 
                     Difficulty:
 
                     {" "}
 
                     <b>
+
                         {data.difficulty}
+
                     </b>
 
+                </p>
 
-                </div>
+
 
 
 
@@ -456,21 +484,49 @@ function ReadingDetail(){
 
 
                 {
-                    data.sentences?.map(
 
-                        sentence=>(
+                data.sentences &&
+
+                data.sentences.length > 0
+
+                ?
+
+                data.sentences.map(
+
+                    sentence=>(
 
 
-                        <section
+                    <section
 
-                        key={
-                            sentence.id
-                        }
+                    key={sentence.id}
 
+                    style={{
+
+                        marginBottom:"35px"
+
+                    }}
+
+                    >
+
+
+
+
+
+                        {/* Original */}
+
+                        <div
 
                         style={{
 
-                            marginBottom:"35px"
+                            fontSize:"18px",
+
+                            lineHeight:"2",
+
+                            display:"flex",
+
+                            flexWrap:"wrap",
+
+                            gap:"6px"
 
                         }}
 
@@ -478,148 +534,143 @@ function ReadingDetail(){
 
 
 
+                        {
+
+                        sentence.words &&
+
+                        sentence.words.length > 0
+
+                        ?
 
 
-                            {/* original sentence */}
+                        sentence.words.map(
+
+                            word=>(
 
 
-                            <div
+                            <span
+
+                            key={word.id}
+
+
+                            onClick={()=>handleWordClick(
+
+                                word.word
+
+                            )}
+
 
                             style={{
 
-                                display:"flex",
+                                cursor:"pointer",
 
-                                flexWrap:"wrap",
+                                padding:"3px 5px",
 
-                                gap:"6px",
+                                borderRadius:"5px",
 
-                                fontSize:"18px",
+                                background:
 
-                                lineHeight:"2",
+                                selectedWord ===
 
-                                textAlign:"left"
+                                word.word.toLowerCase()
+
+                                ?
+
+                                "#fff3cd"
+
+                                :
+
+                                "transparent"
 
                             }}
 
                             >
 
+                                {word.word}
 
 
-                            {
-                                sentence.words?.map(
+                            </span>
 
-                                    word=>(
 
-
-                                    <span
-
-
-                                    key={
-                                        word.id
-                                    }
-
-
-
-                                    onClick={()=>{
-
-                                        handleWordClick(
-                                            word.word
-                                        );
-
-                                    }}
-
-
-
-                                    style={{
-
-                                        cursor:"pointer",
-
-                                        padding:"3px 5px",
-
-                                        borderRadius:"5px",
-
-                                        background:
-
-                                            selectedWord ===
-                                            word.word.toLowerCase()
-
-                                            ?
-
-                                            "#fff3cd"
-
-                                            :
-
-                                            "transparent"
-
-                                    }}
-
-
-                                    >
-
-
-                                        {word.word}
-
-
-                                    </span>
-
-
-                                    )
-
-                                )
-
-                            }
-
-
-                            </div>
-
-
-
-
-
-
-
-
-                            {/* translation */}
-
-
-                            <p
-
-                            style={{
-
-                                marginTop:"12px",
-
-                                marginBottom:"0",
-
-                                color:"#64748b",
-
-                                fontSize:"16px",
-
-                                lineHeight:"1.8",
-
-                                textAlign:"left"
-
-                            }}
-
-                            >
-
-                                {sentence.translation}
-
-
-                            </p>
-
-
-
-
-
-                        </section>
+                            )
 
 
                         )
 
+
+                        :
+
+
+                        <span>
+
+                            {sentence.original}
+
+                        </span>
+
+
+                        }
+
+
+
+                        </div>
+
+
+
+
+
+
+
+
+
+
+                        {/* Translation */}
+
+                        <p
+
+                        style={{
+
+                            marginTop:"12px",
+
+                            color:"#64748b",
+
+                            lineHeight:"1.8"
+
+                        }}
+
+                        >
+
+
+                            {sentence.translation ||
+
+                            "Generating translation..."}
+
+
+                        </p>
+
+
+
+
+
+                    </section>
+
+
                     )
 
-                }
 
+                )
+
+
+                :
+
+
+                <p>
+
+                    No sentences available.
+
+                </p>
+
+
+                }
 
 
 
@@ -633,12 +684,8 @@ function ReadingDetail(){
 
 
 
-
-            {/* Dictionary */}
-
-
             {
-                wordInfo && (
+                wordInfo &&
 
 
                 <aside
@@ -647,22 +694,11 @@ function ReadingDetail(){
 
                     width:"320px",
 
-                    flexShrink:0,
-
-                    position:"sticky",
-
-                    top:"20px",
-
                     padding:"20px",
 
                     border:"1px solid #ddd",
 
-                    borderRadius:"12px",
-
-                    background:"#fff",
-
-                    boxShadow:
-                    "0 4px 12px rgba(0,0,0,0.08)"
+                    borderRadius:"12px"
 
                 }}
 
@@ -670,15 +706,7 @@ function ReadingDetail(){
 
 
 
-                    <h2
-
-                    style={{
-
-                        marginTop:0
-
-                    }}
-
-                    >
+                    <h2>
 
                         {selectedWord}
 
@@ -689,70 +717,85 @@ function ReadingDetail(){
 
 
                     {
-                        wordInfo.found ?
+
+                    wordInfo.found
 
 
-                        <>
+                    ?
 
+                    <>
 
-                        <p>
-                            <b>Lemma:</b>{" "}
-                            {wordInfo.data.lemma}
-                        </p>
+                    <p>
 
+                    <b>Lemma:</b>
 
+                    {" "}
 
-                        <p>
-                            <b>POS:</b>{" "}
-                            {wordInfo.data.pos || "-"}
-                        </p>
+                    {wordInfo.data.lemma}
 
-
-
-                        <p>
-                            <b>CEFR:</b>{" "}
-                            {wordInfo.data.cefr || "-"}
-                        </p>
+                    </p>
 
 
 
-                        <p>
-                            <b>Definition:</b>{" "}
-                            {wordInfo.data.definition || "-"}
-                        </p>
+                    <p>
+
+                    <b>POS:</b>
+
+                    {" "}
+
+                    {wordInfo.data.pos}
+
+                    </p>
 
 
 
-                        <p>
-                            <b>Translation:</b>{" "}
-                            {
-                            wordInfo.data.translations?.en || "-"
-                            }
-                        </p>
+                    <p>
+
+                    <b>CEFR:</b>
+
+                    {" "}
+
+                    {wordInfo.data.cefr}
+
+                    </p>
 
 
 
-                        <button
+                    <p>
 
-                        onClick={
-                            addVocabulary
-                        }
+                    <b>Definition:</b>
 
-                        >
+                    {" "}
 
-                            Add Vocabulary
+                    {wordInfo.data.definition}
 
-                        </button>
+                    </p>
 
 
-                        </>
+
+                    <button
+
+                    onClick={addVocabulary}
+
+                    >
+
+                        Add Vocabulary
+
+                    </button>
 
 
-                        :
+                    </>
 
-                        <p>
-                            Word not found.
-                        </p>
+
+                    :
+
+
+                    <p>
+
+                        Word not found.
+
+                    </p>
+
 
                     }
 
@@ -761,10 +804,7 @@ function ReadingDetail(){
                 </aside>
 
 
-                )
-
             }
-
 
 
 
@@ -774,7 +814,6 @@ function ReadingDetail(){
 
 
 }
-
 
 
 export default ReadingDetail;

@@ -37,7 +37,10 @@ from ..services.word_token_service import (
 from ..ai.factory import get_ai_provider
 
 
+
 router = APIRouter()
+
+
 
 
 
@@ -47,24 +50,94 @@ router = APIRouter()
 # Request
 # =====================================================
 
-
 class ReadingRequest(BaseModel):
-
 
     title: str | None = None
 
-
     content: str
-
 
     source_language: str = "de"
 
-
     translation_language: str = "en"
-
 
     difficulty: str = "B2"
 
+
+
+
+
+
+
+
+
+# =====================================================
+# Create DB record
+# =====================================================
+
+
+def create_reading(payload:dict):
+
+
+    session = SessionLocal()
+
+
+    try:
+
+
+        reading = ReadingDB(
+
+            title=
+                payload.get("title")
+                or
+                "Generating title...",
+
+
+            content=
+                payload["content"],
+
+
+            difficulty=
+                payload.get(
+                    "difficulty",
+                    "B2"
+                ),
+
+
+            source_language=
+                payload.get(
+                    "source_language",
+                    "de"
+                ),
+
+
+            translation_language=
+                payload.get(
+                    "translation_language",
+                    "en"
+                ),
+
+
+            vocabulary=json.dumps([]),
+
+
+            status="processing"
+
+        )
+
+
+        session.add(reading)
+
+        session.commit()
+
+        session.refresh(reading)
+
+
+        return reading.id
+
+
+    finally:
+
+        session.close()
 
 
 
@@ -77,72 +150,42 @@ class ReadingRequest(BaseModel):
 # =====================================================
 
 
-def generate_title(
-
-    content: str,
-
-    source_language: str = "de"
-
-):
-
-
-    if not content:
-
-        return "Imported Reading"
-
-
-
-    provider = get_ai_provider()
-
-
-
-    language_name = (
-
-        "German"
-
-        if source_language == "de"
-
-        else
-
-        "English"
-
-    )
-
-
-
-    prompt = f"""
-Generate a short and meaningful title for this
-{language_name} reading article.
-
-Requirements:
-
-- Language: {language_name}
-- Maximum 8 words
-- Do not use quotation marks
-- Do not summarize too much
-- Return ONLY the title
-
-Article:
-
-{content[:2000]}
-"""
-
+def generate_title(content, language):
 
 
     try:
 
 
-        title = provider.generate(
+        provider=get_ai_provider()
 
+
+
+        prompt=f"""
+
+Generate a short title.
+
+Language:
+{language}
+
+Maximum 8 words.
+
+Return only title.
+
+Text:
+
+{content[:1500]}
+
+"""
+
+
+        result=provider.generate(
             prompt
-
         ).strip()
 
 
+        if result:
 
-        if title:
-
-            return title
+            return result
 
 
 
@@ -150,189 +193,12 @@ Article:
 
 
         print(
-
-            "[TITLE GENERATION ERROR]",
-
+            "[TITLE ERROR]",
             e
-
         )
-
-
-
-
-
-    # =========================
-    # Fallback
-    # =========================
-
-    sentences = split_sentences(
-
-        content
-
-    )
-
-
-
-    if sentences:
-
-
-        words = sentences[0].split()
-
-
-
-        if len(words) > 8:
-
-
-            return (
-
-                " ".join(
-
-                    words[:8]
-
-                )
-
-                +
-
-                "..."
-
-            )
-
-
-
-        return sentences[0]
-
 
 
     return "Imported Reading"
-
-
-
-
-
-
-
-
-
-# =====================================================
-# Create Reading
-# =====================================================
-
-
-def create_reading(
-
-    payload: dict
-
-):
-
-
-    session = SessionLocal()
-
-
-
-    try:
-
-
-        title = payload.get(
-
-            "title"
-
-        )
-
-
-
-        # If no title was supplied,
-        # leave a temporary title.
-        # process_reading() will generate
-        # the correct language title later.
-
-        if not title:
-
-
-            title = "Generating title..."
-
-
-
-
-
-        reading = ReadingDB(
-
-
-            title=title,
-
-
-            content=payload["content"],
-
-
-            difficulty=payload.get(
-
-                "difficulty",
-
-                "B2"
-
-            ),
-
-
-            source_language=payload.get(
-
-                "source_language",
-
-                "de"
-
-            ),
-
-
-            translation_language=payload.get(
-
-                "translation_language",
-
-                "en"
-
-            ),
-
-
-            vocabulary=json.dumps(
-
-                [],
-
-                ensure_ascii=False
-
-            ),
-
-
-            status="processing"
-
-
-        )
-
-
-
-        session.add(
-
-            reading
-
-        )
-
-
-        session.commit()
-
-
-
-        session.refresh(
-
-            reading
-
-        )
-
-
-
-        return reading.id
-
-
-
-    finally:
-
-
-        session.close()
 
 
 
@@ -348,55 +214,35 @@ def create_reading(
 
 
 def save_sentences(
-
     session,
-
-    reading_id: int,
-
-    content: str,
-
-    source_language: str,
-
-    translation_language: str
-
+    reading_id,
+    content,
+    source_language,
+    translation_language
 ):
 
 
     sentences = split_sentences(
-
         content
-
     )
-
 
 
     translations = translate_sentences(
-
         sentences,
-
         source_language,
-
         translation_language
-
     )
 
 
 
-
-
-    translation_map = {}
-
-
+    translation_map={}
 
 
 
     for item in translations:
 
-
         translation_map[
-
             item["sentence_order"]
-
         ] = item["translation"]
 
 
@@ -405,100 +251,80 @@ def save_sentences(
 
 
 
-
-
-    for index, sentence in enumerate(
-
-        sentences
-
-    ):
+    for index,sentence in enumerate(sentences):
 
 
         sentence_db = ReadingSentenceDB(
 
-
-            reading_id=reading_id,
-
-
-            sentence_order=index + 1,
+            reading_id=
+                reading_id,
 
 
-            original=sentence,
+            sentence_order=
+                index + 1,
 
 
-            translation=translation_map.get(
-
-                index + 1
-
-            )
-
-        )
+            original=
+                sentence,
 
 
-
-        session.add(
-
-            sentence_db
+            translation=
+                translation_map.get(
+                    index+1
+                )
 
         )
+
+
+
+        session.add(sentence_db)
 
 
         session.flush()
 
 
 
-
-
         tokens = analyze_sentence(
-
             sentence,
-
             source_language
-
         )
 
 
 
-
-
-        for position, token in enumerate(
-
-            tokens
-
-        ):
+        for position,token in enumerate(tokens):
 
 
             word_db = ReadingWordDB(
 
-
-                sentence_id=sentence_db.id,
-
-
-                word=token["word"],
+                sentence_id=
+                    sentence_db.id,
 
 
-                lemma=token["lemma"],
+                word=
+                    token["word"],
 
 
-                pos=token.get(
-
-                    "pos"
-
-                ),
+                lemma=
+                    token["lemma"],
 
 
-                position=position + 1
+                pos=
+                    token.get("pos"),
 
-            )
 
-
-            session.add(
-
-                word_db
+                position=
+                    position+1
 
             )
 
 
+            session.add(word_db)
+
+
+
+
+
+    session.commit()
 
 
 
@@ -507,36 +333,33 @@ def save_sentences(
 
 
 # =====================================================
-# Background Processing
+# Background
 # =====================================================
 
 
 def process_reading(
-
-    reading_id: int,
-
-    payload: dict
-
+    reading_id,
+    payload
 ):
 
 
-    session = SessionLocal()
-
+    session=SessionLocal()
 
 
     try:
 
 
-        reading = session.query(
+        reading = (
 
-            ReadingDB
+            session.query(
+                ReadingDB
+            )
+            .filter(
+                ReadingDB.id==reading_id
+            )
+            .first()
 
-        ).filter(
-
-            ReadingDB.id == reading_id
-
-        ).first()
-
+        )
 
 
         if not reading:
@@ -546,104 +369,46 @@ def process_reading(
 
 
 
+        # title
 
-        # =========================
-        # Generate title only when
-        # no meaningful title exists
-        # =========================
-
-        current_title = reading.title
+        if reading.title=="Generating title...":
 
 
+            reading.title = generate_title(
 
-        if (
+                payload["content"],
 
-            not current_title
-
-            or
-
-            current_title == "Generating title..."
-
-        ):
-
-
-            try:
-
-
-                reading.title = generate_title(
-
-                    payload["content"],
-
-                    payload.get(
-
-                        "source_language",
-
-                        "de"
-
-                    )
-
+                payload.get(
+                    "source_language",
+                    "de"
                 )
 
+            )
 
 
-                session.commit()
-
-
-
-            except Exception as e:
-
-
-                print(
-
-                    "[TITLE ERROR]",
-
-                    e
-
-                )
-
-
-                reading.title = "Imported Reading"
-
-
-                session.commit()
+            session.commit()
 
 
 
 
 
-
-
-        # =========================
-        # Save sentences
-        # =========================
 
         save_sentences(
 
-
             session,
-
 
             reading_id,
 
-
             payload["content"],
 
-
             payload.get(
-
                 "source_language",
-
                 "de"
-
             ),
 
-
             payload.get(
-
                 "translation_language",
-
                 "en"
-
             )
 
         )
@@ -651,13 +416,7 @@ def process_reading(
 
 
 
-
-        # =========================
-        # Completed
-        # =========================
-
-        reading.status = "completed"
-
+        reading.status="completed"
 
 
         session.commit()
@@ -665,13 +424,9 @@ def process_reading(
 
 
         print(
-
             "[READING COMPLETED]",
-
             reading_id
-
         )
-
 
 
 
@@ -679,37 +434,31 @@ def process_reading(
 
 
         print(
-
             "[READING ERROR]",
-
             e
-
         )
-
 
 
         session.rollback()
 
 
 
-        reading = session.query(
+        reading = (
 
-            ReadingDB
+            session.query(
+                ReadingDB
+            )
+            .filter(
+                ReadingDB.id==reading_id
+            )
+            .first()
 
-        ).filter(
-
-            ReadingDB.id == reading_id
-
-        ).first()
-
+        )
 
 
         if reading:
 
-
-            reading.status = "failed"
-
-
+            reading.status="failed"
 
             session.commit()
 
@@ -717,10 +466,7 @@ def process_reading(
 
     finally:
 
-
         session.close()
-
-
 
 
 
@@ -735,50 +481,28 @@ def process_reading(
 
 @router.post("/readings")
 def create_reading_api(
-
-    req: ReadingRequest,
-
-    background_tasks: BackgroundTasks
-
+    req:ReadingRequest,
+    background_tasks:BackgroundTasks
 ):
 
 
-    payload = req.model_dump()
+    payload=req.model_dump()
 
 
-
-    if not payload.get(
-
-        "content"
-
-    ):
-
+    if not payload["content"].strip():
 
         raise HTTPException(
-
-            status_code=400,
-
-            detail="Content is required"
-
+            400,
+            "Content required"
         )
 
 
 
-
-
-    reading_id = create_reading(
-
+    reading_id=create_reading(
         payload
-
     )
 
 
-
-
-
-    # Run translation,
-    # tokenization and title generation
-    # in background.
 
     background_tasks.add_task(
 
@@ -792,35 +516,16 @@ def create_reading_api(
 
 
 
-
-
     return {
 
-
         "id":
-
             reading_id,
 
 
-        "title":
-
-            payload.get(
-
-                "title"
-
-            )
-
-            or
-
-            "Generating title...",
-
-
         "status":
-
             "processing"
 
     }
-
 
 
 
@@ -838,75 +543,61 @@ def create_reading_api(
 def get_readings():
 
 
-    session = SessionLocal()
-
+    session=SessionLocal()
 
 
     try:
 
 
-        readings = session.query(
+        readings=(
 
-            ReadingDB
+            session.query(
+                ReadingDB
+            )
+            .order_by(
+                ReadingDB.id.desc()
+            )
+            .all()
 
-        ).order_by(
-
-            ReadingDB.id.desc()
-
-        ).all()
-
-
+        )
 
 
 
         return [
 
-
             {
 
-
                 "id":
-
-                    reading.id,
+                    r.id,
 
 
                 "title":
-
-                    reading.title,
+                    r.title,
 
 
                 "difficulty":
-
-                    reading.difficulty,
+                    r.difficulty,
 
 
                 "status":
-
-                    reading.status,
+                    r.status,
 
 
                 "source_language":
-
-                    reading.source_language,
+                    r.source_language,
 
 
                 "translation_language":
-
-                    reading.translation_language
-
+                    r.translation_language
 
             }
 
-
-            for reading in readings
-
+            for r in readings
 
         ]
 
 
-
     finally:
-
 
         session.close()
 
@@ -919,193 +610,176 @@ def get_readings():
 
 
 # =====================================================
-# GET /readings/{reading_id}
+# GET /readings/{id}
 # =====================================================
 
 
 @router.get("/readings/{reading_id}")
-def get_reading(
-
-    reading_id: int
-
-):
+def get_reading(reading_id:int):
 
 
-    session = SessionLocal()
-
+    session=SessionLocal()
 
 
     try:
 
 
-        reading = session.query(
+        reading=(
 
-            ReadingDB
+            session.query(
+                ReadingDB
+            )
+            .filter(
+                ReadingDB.id==reading_id
+            )
+            .first()
 
-        ).filter(
-
-            ReadingDB.id == reading_id
-
-        ).first()
-
+        )
 
 
         if not reading:
 
-
             raise HTTPException(
+                404,
+                "Reading not found"
+            )
 
-                status_code=404,
 
-                detail="Reading not found"
+
+        sentences=[]
+
+
+
+        db_sentences=(
+
+            session.query(
+                ReadingSentenceDB
+            )
+            .filter(
+                ReadingSentenceDB.reading_id==reading_id
+            )
+            .order_by(
+                ReadingSentenceDB.sentence_order
+            )
+            .all()
+
+        )
+
+
+
+
+        for s in db_sentences:
+
+
+            words=[]
+
+
+
+            db_words=(
+
+                session.query(
+                    ReadingWordDB
+                )
+                .filter(
+                    ReadingWordDB.sentence_id==s.id
+                )
+                .order_by(
+                    ReadingWordDB.position
+                )
+                .all()
 
             )
 
 
 
+            for w in db_words:
 
 
-        sentences = []
-
-
-
-
-
-        for sentence in reading.sentences:
-
-
-            words = []
-
-
-
-            for word in sentence.words:
-
-
-                words.append(
-
-                    {
-
-
-                        "id":
-
-                            word.id,
-
-
-                        "word":
-
-                            word.word,
-
-
-                        "lemma":
-
-                            word.lemma,
-
-
-                        "pos":
-
-                            word.pos,
-
-
-                        "position":
-
-                            word.position
-
-                    }
-
-                )
-
-
-
-
-
-            sentences.append(
-
-                {
-
+                words.append({
 
                     "id":
+                        w.id,
 
-                        sentence.id,
+                    "word":
+                        w.word,
 
+                    "lemma":
+                        w.lemma,
 
-                    "sentence_order":
+                    "pos":
+                        w.pos,
 
-                        sentence.sentence_order,
+                    "position":
+                        w.position
 
-
-                    "original":
-
-                        sentence.original,
-
-
-                    "translation":
-
-                        sentence.translation,
-
-
-                    "words":
-
-                        words
-
-                }
-
-            )
+                })
 
 
 
+
+            sentences.append({
+
+                "id":
+                    s.id,
+
+
+                "sentence_order":
+                    s.sentence_order,
+
+
+                "original":
+                    s.original,
+
+
+                "translation":
+                    s.translation,
+
+
+                "words":
+                    words
+
+            })
 
 
 
 
         return {
 
-
             "id":
-
                 reading.id,
 
 
             "title":
-
                 reading.title,
 
 
             "content":
-
                 reading.content,
 
 
             "difficulty":
-
                 reading.difficulty,
 
 
             "source_language":
-
                 reading.source_language,
 
 
             "translation_language":
-
                 reading.translation_language,
 
 
             "status":
-
                 reading.status,
 
 
             "sentences":
-
                 sentences
 
         }
 
 
 
-
-
     finally:
-
 
         session.close()
