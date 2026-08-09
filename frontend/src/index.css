@@ -1,111 +1,1425 @@
 :root {
+
+
   --text: #6b6375;
+
   --text-h: #08060d;
-  --bg: #fff;
+
+  --bg: #ffffff;
+
+  --card-bg: #ffffff;
+
   --border: #e5e4e7;
+
   --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+
+
+  --accent: #2563eb;
+
+  --accent-bg: #eff6ff;
+
+
   --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+    rgba(0,0,0,0.08)
+    0 4px 12px;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --sans:
+    system-ui,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+
+  font:
+    18px/145%
+    var(--sans);
+
+
+  color:
+    var(--text);
+
+
+  background:
+    var(--bg);
+
+
+  font-synthesis:none;
+
+  text-rendering:optimizeLegibility;
+
+  -webkit-font-smoothing:antialiased;
+
+  -moz-osx-font-smoothing:grayscale;
+
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+
+
+
+/* =====================
+   GLOBAL
+===================== */
+
+
+*{
+
+
+  box-sizing:border-box;
+
+
 }
 
-body {
-  margin: 0;
+
+
+
+html{
+
+
+  width:100%;
+
+  overflow-x:hidden;
+
+
 }
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
+
+
+
+body{
+
+
+  margin:0;
+
+  width:100%;
+
+  min-height:100vh;
+
+  background:var(--bg);
+
+
 }
+
+
+
+
+
+#root{
+
+
+  width:100%;
+
+  max-width:1126px;
+
+  margin:0 auto;
+
+  min-height:100svh;
+
+  display:flex;
+
+  flex-direction:column;
+
+  border-inline:1px solid var(--border);
+
+  overflow-x:hidden;
+
+
+}
+
+
+
+
 
 h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h2,
+h3{
+
+
+  color:var(--text-h);
+
+  font-weight:600;
+
+
 }
 
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+
+
+
+h1{
+
+
+  font-size:42px;
+
+  margin:32px 0;
+
+
+}
+
+
+
+
+h2{
+
+
+  font-size:24px;
+
+
+}
+
+
+
+
+p{
+
+
+  margin:0;
+
+
+}
+
+
+
+
+
+button{
+
+
+  font-family:inherit;
+
+
+}
+
+
+
+
+
+
+.subtitle{
+
+
+  color:#6b7280;
+
+  line-height:1.6;
+
+
+}
+
+
+
+
+
+
+
+
+
+/* =====================
+   NAVBAR
+===================== */
+
+
+nav{
+
+
+  backdrop-filter:blur(10px);
+
+
+}
+
+
+
+
+
+/* =====================
+   READING LIST
+===================== */
+
+
+.readings-page{
+
+
+  width:100%;
+
+  max-width:1100px;
+
+  margin:40px auto;
+
+  padding:0 30px;
+
+
+}
+
+
+
+
+
+.reading-grid{
+
+
+  display:grid;
+
+  grid-template-columns:
+  repeat(auto-fill,minmax(300px,1fr));
+
+  gap:20px;
+
+
+}
+
+
+
+
+
+.reading-card{
+
+
+  background:var(--card-bg);
+
+  border:1px solid var(--border);
+
+  border-radius:18px;
+
+  padding:24px;
+
+  min-height:150px;
+
+  box-shadow:
+  0 4px 12px rgba(0,0,0,.05);
+
+
+}
+
+
+
+
+
+
+
+
+/* =====================
+   READING DETAIL
+===================== */
+
+
+.reading-layout{
+
+
+  display:flex;
+
+  flex-direction:row;
+
+  gap:30px;
+
+  width:100%;
+
+  max-width:1400px;
+
+  margin:0 auto;
+
+  padding:30px;
+
+
+}
+
+
+
+
+.dictionary-panel{
+
+
+  width:320px;
+
+  flex-shrink:0;
+
+
+}
+
+
+
+
+
+
+
+
+
+/* =====================
+   CREATE READING
+===================== */
+
+
+.create-reading-page{
+
+
+  width:100%;
+
+  max-width:900px;
+
+  margin:40px auto;
+
+  padding:0 30px;
+
+
+}
+
+
+
+
+.reading-input{
+
+
+  width:100%;
+
+  resize:vertical;
+
+  padding:16px;
+
+  border-radius:14px;
+
+  border:1px solid #d1d5db;
+
+  font-size:16px;
+
+  line-height:1.6;
+
+
+}
+
+
+
+
+.start-button{
+
+
+  margin-top:20px;
+
+  padding:14px 24px;
+
+  border:none;
+
+  border-radius:12px;
+
+  background:#2563eb;
+
+  color:white;
+
+  font-size:16px;
+
+  font-weight:600;
+
+  cursor:pointer;
+
+
+}
+
+
+
+
+
+
+
+
+/* =====================
+   FLASHCARDS
+===================== */
+
+
+.flashcards-page{
+
+
+  width:100%;
+
+  max-width:700px;
+
+  margin:40px auto;
+
+  padding:0 30px;
+
+  text-align:center;
+
+
+}
+
+
+
+
+.flashcard-sets{
+
+
+  display:flex;
+
+  flex-wrap:wrap;
+
+  justify-content:center;
+
+  gap:10px;
+
+  margin-bottom:25px;
+
+
+}
+
+
+
+
+.set-button{
+
+
+  padding:8px 16px;
+
+  border-radius:10px;
+
+  border:1px solid #d1d5db;
+
+  background:white;
+
+  cursor:pointer;
+
+
+}
+
+
+
+
+.set-button.active{
+
+
+  background:#2563eb;
+
+  color:white;
+
+
+}
+
+
+
+
+
+.flashcard{
+
+
+  width:100%;
+
+  min-height:260px;
+
+  border:1px solid #e5e7eb;
+
+  border-radius:18px;
+
+  display:flex;
+
+  justify-content:center;
+
+  align-items:center;
+
+  padding:30px;
+
+  cursor:pointer;
+
+  background:white;
+
+  font-size:30px;
+
+  line-height:1.5;
+
+  overflow-wrap:break-word;
+
+  white-space:pre-line;
+
+  box-shadow:
+  0 4px 15px rgba(0,0,0,.08);
+
+
+}
+
+
+
+
+
+.flashcard-actions{
+
+
+  display:flex;
+
+  justify-content:center;
+
+  gap:20px;
+
+  margin-top:30px;
+
+
+}
+
+
+
+
+
+.flashcard-actions button{
+
+
+  min-width:130px;
+
+  padding:12px 20px;
+
+  border:none;
+
+  border-radius:12px;
+
+  cursor:pointer;
+
+
+}
+
+
+
+
+
+/* =====================
+   VOCABULARY
+===================== */
+
+
+.vocabulary-page{
+
+
+  width:100%;
+
+  max-width:1000px;
+
+  margin:40px auto;
+
+  padding:0 30px;
+
+
+}
+
+
+
+
+
+.vocabulary-list{
+
+
+  display:flex;
+
+  flex-direction:column;
+
+  gap:16px;
+
+
+}
+
+
+
+
+.vocabulary-card{
+
+
+  border:1px solid #e5e7eb;
+
+  border-radius:16px;
+
+  padding:22px;
+
+  background:white;
+
+  box-shadow:
+  0 4px 12px rgba(0,0,0,.05);
+
+  overflow-wrap:break-word;
+
+  word-break:break-word;
+
+
+}
+
+
+
+
+
+
+
+
+
+/* =====================
+   WRITING
+===================== */
+
+
+.writing-page{
+
+
+  width:100%;
+
+  max-width:800px;
+
+  margin:40px auto;
+
+  padding:0 30px;
+
+
+}
+
+
+
+
+
+.writing-info-card{
+
+
+  margin:30px 0;
+
+  padding:20px;
+
+  background:#f9fafb;
+
+  border-radius:16px;
+
+  border:1px solid #e5e7eb;
+
+
+}
+
+
+
+
+
+.writing-select{
+
+
+  width:100%;
+
+  padding:12px;
+
+  border-radius:12px;
+
+  border:1px solid #d1d5db;
+
+  font-size:16px;
+
+
+}
+
+
+
+
+
+.generate-button{
+
+
+  width:100%;
+
+  padding:14px;
+
+  border:none;
+
+  border-radius:12px;
+
+  background:#2563eb;
+
+  color:white;
+
+  font-size:16px;
+
+  font-weight:600;
+
+}
+
+
+
+
+
+
+
+
+
+/* =====================
+   LOADING
+===================== */
+
+
+.loading-page{
+
+
+  padding:40px;
+
+  text-align:center;
+
+
+}
+
+
+
+
+
+
+
+
+
+/* =====================
+   MOBILE
+===================== */
+
+
+@media(max-width:768px){
+
+
+
+  :root{
+
+
+    font-size:15px;
+
+
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+
+
+
+
+  #root{
+
+
+    border:none;
+
+
   }
-}
-p {
-  margin: 0;
+
+
+
+
+
+  h1{
+
+
+    font-size:26px;
+
+    margin:20px 0;
+
+
+  }
+
+
+
+
+
+
+
+  .reading-layout{
+
+
+    flex-direction:column;
+
+    padding:20px 16px;
+
+    gap:20px;
+
+
+  }
+
+
+
+
+  .dictionary-panel{
+
+
+    width:100%;
+
+
+  }
+
+
+
+
+
+
+  .create-reading-page,
+  .writing-page,
+  .vocabulary-page,
+  .flashcards-page{
+
+
+    margin:20px auto;
+
+    padding:0 16px;
+
+
+  }
+
+
+
+
+
+
+  .reading-grid{
+
+
+    grid-template-columns:1fr;
+
+
+  }
+
+
+
+
+
+
+  .flashcard{
+
+
+    min-height:220px;
+
+    padding:20px;
+
+    font-size:22px;
+
+
+  }
+
+
+
+
+
+
+  .flashcard-actions{
+
+
+    flex-direction:column;
+
+    gap:12px;
+
+
+  }
+
+
+
+
+
+
+  .flashcard-actions button{
+
+
+    width:100%;
+
+    min-height:48px;
+
+
+  }
+
+
+
+
+
+
+  .vocabulary-card{
+
+
+    padding:18px;
+
+
+  }
+
+
+
+
+
+  .writing-info-card{
+
+
+    padding:16px;
+
+
+  }
+
+
+
+
+
+  textarea,
+  select,
+  button{
+
+
+    font-size:16px;
+
+
+  }
+
+
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+
+
+
+
+
+
+
+
+/* =====================
+   DARK MODE
+===================== */
+
+
+@media(prefers-color-scheme:dark){
+
+
+:root{
+
+
+  --text:#9ca3af;
+
+  --text-h:#f3f4f6;
+
+  --bg:#16171d;
+
+  --card-bg:#1f2028;
+
+  --border:#2e303a;
+
+
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+
+
+
+.flashcard,
+.vocabulary-card,
+.reading-card{
+
+
+  background:#1f2028;
+
+  color:#f3f4f6;
+
+  border-color:#2e303a;
+
+
+}
+
+
+
+
+.set-button{
+
+
+  background:#1f2028;
+
+  color:#f3f4f6;
+
+
+}
+
+
+
+}
+
+/* =====================
+   Navbar Responsive
+===================== */
+
+
+.mobile-menu-button{
+
+    display:none !important;
+
+}
+
+
+
+@media(max-width:768px){
+
+
+    .desktop-navbar{
+
+        display:none !important;
+
+    }
+
+
+
+    .mobile-menu-button{
+
+        display:block !important;
+
+    }
+
+
+
+}
+/* =====================
+   Reading List
+===================== */
+
+
+.reading-list-page{
+
+
+    width:100%;
+
+
+    max-width:1100px;
+
+
+    margin:40px auto;
+
+
+    padding:0 30px;
+
+
+}
+
+
+
+
+
+.reading-list-header{
+
+
+    display:flex;
+
+
+    justify-content:space-between;
+
+
+    align-items:center;
+
+
+    margin-bottom:40px;
+
+
+}
+
+
+
+
+.reading-list-header h1{
+
+
+    margin-bottom:8px;
+
+
+}
+
+
+
+
+.create-button{
+
+
+    background:#2563eb;
+
+
+    color:white;
+
+
+    text-decoration:none;
+
+
+    padding:14px 22px;
+
+
+    border-radius:14px;
+
+
+    font-weight:600;
+
+
+    transition:0.2s;
+
+
+}
+
+
+
+
+.create-button:hover{
+
+
+    transform:translateY(-2px);
+
+
+    box-shadow:
+    0 8px 20px rgba(37,99,235,0.25);
+
+
+}
+
+
+
+
+
+.reading-grid{
+
+
+    display:grid;
+
+
+    grid-template-columns:
+
+
+    repeat(auto-fill,minmax(300px,1fr));
+
+
+    gap:24px;
+
+
+}
+
+
+
+
+
+.reading-card-link{
+
+
+    text-decoration:none;
+
+
+    color:inherit;
+
+
+}
+
+
+
+
+
+.reading-card{
+
+
+    background:white;
+
+
+    border:1px solid #e5e7eb;
+
+
+    border-radius:24px;
+
+
+    padding:28px;
+
+
+    min-height:190px;
+
+
+    display:flex;
+
+
+    flex-direction:column;
+
+
+    justify-content:space-between;
+
+
+    box-shadow:
+
+
+    0 8px 25px rgba(0,0,0,0.05);
+
+
+    transition:all .25s ease;
+
+
+}
+
+
+
+
+
+.reading-card:hover{
+
+
+    transform:translateY(-6px);
+
+
+    box-shadow:
+
+
+    0 15px 35px rgba(0,0,0,0.12);
+
+
+}
+
+
+
+
+
+.reading-card h3{
+
+
+    font-size:22px;
+
+
+    line-height:1.4;
+
+
+    margin-bottom:20px;
+
+
+}
+
+
+
+
+.reading-meta{
+
+
+    display:flex;
+
+
+    gap:10px;
+
+
+}
+
+
+
+
+
+.reading-meta span{
+
+
+    background:#f3f4f6;
+
+
+    padding:6px 12px;
+
+
+    border-radius:20px;
+
+
+    font-size:14px;
+
+
+}
+
+
+
+
+
+.status{
+
+
+    margin-top:20px;
+
+
+    width:max-content;
+
+
+    padding:7px 14px;
+
+
+    border-radius:20px;
+
+
+    font-size:14px;
+
+
+    font-weight:600;
+
+
+}
+
+
+
+
+
+.status.completed{
+
+
+    background:#dcfce7;
+
+
+    color:#166534;
+
+
+}
+
+
+
+
+
+.status.processing{
+
+
+    background:#fef3c7;
+
+
+    color:#92400e;
+
+
+}
+
+
+
+
+
+
+
+@media(max-width:768px){
+
+
+
+.reading-list-page{
+
+
+    margin:20px auto;
+
+
+    padding:0 16px;
+
+
+}
+
+
+
+.reading-list-header{
+
+
+    flex-direction:column;
+
+
+    align-items:stretch;
+
+
+    gap:20px;
+
+
+}
+
+
+
+.create-button{
+
+
+    text-align:center;
+
+
+}
+
+
+
+.reading-grid{
+
+
+    grid-template-columns:1fr;
+
+
+}
+
+
+
+.reading-card{
+
+
+    padding:22px;
+
+
+    border-radius:20px;
+
+
+}
+
+
+
 }

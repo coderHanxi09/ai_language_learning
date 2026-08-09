@@ -22,7 +22,6 @@ function Writing(){
 
 
 
-
     const [language,setLanguage] = useState(
 
         localStorage.getItem(
@@ -51,8 +50,6 @@ function Writing(){
 
 
 
-    // sync Navbar language change
-
     useEffect(()=>{
 
 
@@ -62,9 +59,7 @@ function Writing(){
             setLanguage(
 
                 localStorage.getItem(
-
                     "learningLanguage"
-
                 )
                 ||
                 "de"
@@ -77,8 +72,6 @@ function Writing(){
 
 
 
-
-
         window.addEventListener(
 
             "languageChange",
@@ -86,7 +79,6 @@ function Writing(){
             syncLanguage
 
         );
-
 
 
 
@@ -131,7 +123,6 @@ function Writing(){
 
 
 
-
             const filtered =
 
                 res.data.filter(
@@ -145,7 +136,6 @@ function Writing(){
                     language
 
                 );
-
 
 
 
@@ -186,7 +176,6 @@ function Writing(){
         loadVocabularyCount();
 
 
-
     },[language]);
 
 
@@ -225,7 +214,6 @@ function Writing(){
 
 
 
-
             if(res.data.id){
 
 
@@ -234,6 +222,13 @@ function Writing(){
                     `/readings/${res.data.id}`
 
                 );
+
+
+            }
+            else{
+
+
+                setLoading(false);
 
 
             }
@@ -258,7 +253,6 @@ function Writing(){
             );
 
 
-
             setLoading(false);
 
 
@@ -277,21 +271,7 @@ function Writing(){
 
     return (
 
-
-        <div
-
-        style={{
-
-            maxWidth:"800px",
-
-            margin:"40px auto",
-
-            padding:"30px"
-
-        }}
-
-        >
-
+        <div className="writing-page">
 
 
 
@@ -305,17 +285,7 @@ function Writing(){
 
 
 
-            <p
-
-            style={{
-
-                color:"#666",
-
-                lineHeight:"1.6"
-
-            }}
-
-            >
+            <p className="subtitle">
 
                 Generate a personalized reading article
                 based on your vocabulary.
@@ -330,58 +300,50 @@ function Writing(){
 
 
 
-            <div
-
-            style={{
-
-                marginBottom:"30px",
-
-                padding:"15px",
-
-                background:"#f5f5f5",
-
-                borderRadius:"8px"
-
-            }}
-
-            >
+            <div className="writing-info-card">
 
 
-                Vocabulary available:
+                <p>
 
-                {" "}
+                    Vocabulary available:
 
-                <b>
+                    {" "}
 
-                    {vocabularyCount}
+                    <b>
 
-                </b>
+                        {vocabularyCount}
+
+                    </b>
+
+                </p>
 
 
 
-                <br />
 
 
+                <p>
 
-                Words used:
+                    Words used:
 
-                {" "}
+                    {" "}
 
-                <b>
+                    <b>
 
-                    {
+                        {
 
-                    Math.min(
+                        Math.min(
 
-                        50,
+                            50,
 
-                        vocabularyCount
+                            vocabularyCount
 
-                    )
+                        )
 
-                    }
+                        }
 
-                </b>
+                    </b>
+
+                </p>
 
 
             </div>
@@ -402,34 +364,29 @@ function Writing(){
 
 
 
-
             <select
+
+            className="writing-select"
 
 
             value={language}
 
 
+
             onChange={
 
-                e=>setLanguage(
+                e=>{
 
-                    e.target.value
+                    setLanguage(
 
-                )
+                        e.target.value
+
+                    );
+
+                }
 
             }
 
-
-
-            style={{
-
-                width:"100%",
-
-                padding:"10px",
-
-                margin:"10px 0 20px"
-
-            }}
 
             >
 
@@ -472,12 +429,18 @@ function Writing(){
             <select
 
 
+            className="writing-select"
+
+
             value={level}
+
 
 
             onChange={
 
-                e=>setLevel(
+                e=>
+
+                setLevel(
 
                     e.target.value
 
@@ -485,17 +448,6 @@ function Writing(){
 
             }
 
-
-
-            style={{
-
-                width:"100%",
-
-                padding:"10px",
-
-                margin:"10px 0 30px"
-
-            }}
 
             >
 
@@ -541,51 +493,36 @@ function Writing(){
             <button
 
 
+            className="generate-button"
+
+
+
             onClick={generate}
+
 
 
             disabled={loading}
 
 
 
-            style={{
-
-                width:"100%",
-
-                padding:"14px",
-
-                fontSize:"16px",
-
-                cursor:
-
-                    loading
-
-                    ?
-
-                    "not-allowed"
-
-                    :
-
-                    "pointer"
-
-            }}
-
             >
 
 
                 {
 
-                    loading
+                loading
 
-                    ?
+                ?
 
-                    "Generating..."
+                "Generating..."
 
-                    :
+                :
 
-                    "Generate Article"
+                "Generate Article"
+
 
                 }
+
 
 
             </button>
@@ -593,16 +530,12 @@ function Writing(){
 
 
 
-
-
         </div>
-
 
     );
 
 
 }
-
 
 
 export default Writing;

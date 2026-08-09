@@ -8,6 +8,8 @@ import api from "../api/axios";
 
 
 
+
+
 function Vocabulary(){
 
 
@@ -30,6 +32,67 @@ function Vocabulary(){
 
 
 
+    const [isMobile,setIsMobile] = useState(
+
+        window.innerWidth <= 768
+
+    );
+
+
+
+
+
+
+
+
+
+    useEffect(()=>{
+
+
+        function resize(){
+
+
+            setIsMobile(
+
+                window.innerWidth <= 768
+
+            );
+
+
+        }
+
+
+
+        window.addEventListener(
+
+            "resize",
+
+            resize
+
+        );
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "resize",
+
+                resize
+
+            );
+
+
+        };
+
+
+    },[]);
+
+
+
+
 
 
 
@@ -39,6 +102,10 @@ function Vocabulary(){
 
 
         try{
+
+
+            setLoading(true);
+
 
 
             const response = await api.get(
@@ -52,11 +119,12 @@ function Vocabulary(){
             const currentLanguage =
 
                 localStorage.getItem(
+
                     "learningLanguage"
+
                 )
                 ||
                 "de";
-
 
 
 
@@ -69,6 +137,7 @@ function Vocabulary(){
 
 
 
+
             const filteredWords =
 
                 response.data.filter(
@@ -76,10 +145,14 @@ function Vocabulary(){
                     word =>
 
                     word.source_language
+
                     ===
+
                     currentLanguage
 
                 );
+
+
 
 
 
@@ -88,6 +161,7 @@ function Vocabulary(){
                 filteredWords
 
             );
+
 
 
 
@@ -127,7 +201,6 @@ function Vocabulary(){
         loadVocabulary();
 
 
-
     },[]);
 
 
@@ -144,13 +217,11 @@ function Vocabulary(){
         function handleLanguageChange(){
 
 
-            setLoading(true);
-
-
             loadVocabulary();
 
 
         }
+
 
 
 
@@ -182,7 +253,6 @@ function Vocabulary(){
         };
 
 
-
     },[]);
 
 
@@ -198,21 +268,14 @@ function Vocabulary(){
 
         return (
 
-            <div
-
-            style={{
-
-                padding:"40px"
-
-            }}
-
-            >
+            <div className="loading-page">
 
                 Loading vocabulary...
 
             </div>
 
         );
+
 
     }
 
@@ -228,17 +291,30 @@ function Vocabulary(){
 
         <div
 
+        className="vocabulary-page"
+
         style={{
 
-            padding:"40px",
 
-            maxWidth:"1000px",
+            padding:
 
-            margin:"auto"
+                isMobile
+
+                ?
+
+                "0 16px"
+
+                :
+
+                "0 30px"
+
 
         }}
 
         >
+
+
+
 
 
             <h1>
@@ -251,21 +327,16 @@ function Vocabulary(){
 
 
 
-            <p
+            <p className="subtitle">
 
-            style={{
-
-                color:"#6b7280"
-
-            }}
-
-            >
 
                 Current language:
 
                 {" "}
 
+
                 {
+
 
                     language === "de"
 
@@ -276,6 +347,7 @@ function Vocabulary(){
                     :
 
                     "🇬🇧 English"
+
 
                 }
 
@@ -288,208 +360,225 @@ function Vocabulary(){
 
 
 
+
+
             {
 
-                words.length === 0
 
-                ?
+            words.length === 0
 
-                <p>
 
-                    No vocabulary yet.
+            ?
 
-                </p>
 
-                :
+            <div className="empty-box">
 
 
-                <div>
+                No vocabulary yet.
 
 
+            </div>
 
-                {
 
-                    words.map(
 
-                        word=>(
+            :
 
 
-                        <div
 
-                        key={
+            <div
 
-                            word.id
+            className="vocabulary-list"
 
-                        }
+            >
 
 
-                        style={{
 
-                            border:
+            {
 
-                            "1px solid #ddd",
 
+            words.map(
 
-                            borderRadius:
+                word=>(
 
-                            "12px",
 
+                <div
 
-                            padding:
+                key={word.id}
 
-                            "20px",
+                className="vocabulary-card"
 
+                style={{
 
-                            marginBottom:
 
-                            "15px"
+                    overflowWrap:"break-word",
 
+                    wordBreak:"break-word"
 
-                        }}
 
-                        >
+                }}
 
+                >
 
 
-                            <h2>
 
-                                {
 
-                                    word.word
 
-                                }
+                    <h2>
 
-                            </h2>
 
+                        {word.word}
 
 
+                    </h2>
 
 
-                            <p>
 
-                                Lemma:
 
-                                {" "}
 
-                                {
 
-                                    word.lemma
+                    <p>
 
-                                }
 
-                            </p>
+                        <b>
 
+                            Lemma:
 
+                        </b>
 
 
+                        {" "}
 
 
+                        {word.lemma}
 
-                            {
 
-                                word.translation &&
+                    </p>
 
 
-                                <p>
 
-                                    Translation:
 
-                                    {" "}
 
-                                    {
 
-                                        word.translation
 
-                                    }
 
+                    {
 
-                                </p>
 
+                    word.translation &&
 
-                            }
 
+                    <p>
 
 
+                        <b>
 
+                            Translation:
 
+                        </b>
 
 
-                            {
+                        {" "}
 
-                                word.definition &&
 
+                        {word.translation}
 
-                                <p>
 
-                                    Definition:
+                    </p>
 
-                                    {" "}
 
-                                    {
+                    }
 
-                                        word.definition
 
-                                    }
 
 
-                                </p>
 
 
-                            }
 
 
+                    {
 
 
+                    word.definition &&
 
 
+                    <p>
 
-                            {
 
-                                word.cefr &&
+                        <b>
 
+                            Definition:
 
-                                <p>
+                        </b>
 
-                                    CEFR:
 
-                                    {" "}
+                        {" "}
 
-                                    {
 
-                                        word.cefr
+                        {word.definition}
 
-                                    }
 
+                    </p>
 
-                                </p>
 
+                    }
 
-                            }
 
 
 
-                        </div>
 
 
-                        )
 
 
-                    )
+                    {
 
 
-                }
+                    word.cefr &&
+
+
+                    <p>
+
+
+                        <b>
+
+                            CEFR:
+
+                        </b>
+
+
+                        {" "}
+
+
+                        {word.cefr}
+
+
+                    </p>
+
+
+                    }
+
 
 
                 </div>
+
+
+                )
+
+
+            )
 
 
             }
 
 
 
+            </div>
+
+
+            }
+
+
 
         </div>
-
 
     );
 

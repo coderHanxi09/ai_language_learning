@@ -19,6 +19,7 @@ function ReadingDetail(){
     const { id } = useParams();
 
 
+
     const [data,setData] = useState(null);
 
 
@@ -29,15 +30,62 @@ function ReadingDetail(){
 
 
 
-    const [language,setLanguage] = useState(
-
-        localStorage.getItem(
-            "learningLanguage"
-        )
-        ||
-        "de"
-
+    const [isMobile,setIsMobile] = useState(
+        window.innerWidth <= 768
     );
+
+
+
+
+
+
+
+
+
+    useEffect(()=>{
+
+
+        function resize(){
+
+
+            setIsMobile(
+
+                window.innerWidth <= 768
+
+            );
+
+
+        }
+
+
+
+        window.addEventListener(
+
+            "resize",
+
+            resize
+
+        );
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "resize",
+
+                resize
+
+            );
+
+
+        };
+
+
+    },[]);
+
 
 
 
@@ -59,11 +107,13 @@ function ReadingDetail(){
             );
 
 
+
             setData(
 
                 res.data
 
             );
+
 
 
             return res.data.status;
@@ -73,10 +123,15 @@ function ReadingDetail(){
         }catch(error){
 
 
-            console.error(error);
+            console.error(
+
+                error
+
+            );
 
 
             return null;
+
 
         }
 
@@ -101,19 +156,19 @@ function ReadingDetail(){
         const timer = setInterval(async()=>{
 
 
-            const status =
-                await loadReading();
+            const status = await loadReading();
 
 
 
-            if(status === "completed"){
+            if(
 
-                clearInterval(timer);
+                status === "completed"
 
-            }
+                ||
 
+                status === "failed"
 
-            if(status === "failed"){
+            ){
 
                 clearInterval(timer);
 
@@ -145,63 +200,6 @@ function ReadingDetail(){
 
 
 
-    useEffect(()=>{
-
-
-        function handleLanguageChange(){
-
-
-            setLanguage(
-
-                localStorage.getItem(
-                    "learningLanguage"
-                )
-                ||
-                "de"
-
-            );
-
-
-        }
-
-
-
-
-        window.addEventListener(
-
-            "languageChange",
-
-            handleLanguageChange
-
-        );
-
-
-
-        return ()=>{
-
-
-            window.removeEventListener(
-
-                "languageChange",
-
-                handleLanguageChange
-
-            );
-
-
-        };
-
-
-    },[]);
-
-
-
-
-
-
-
-
-
     async function handleWordClick(word){
 
 
@@ -211,11 +209,17 @@ function ReadingDetail(){
             const cleanWord =
 
                 word
+
                 .replace(
+
                     /[.,!?;:"'()]/g,
+
                     ""
+
                 )
+
                 .toLowerCase();
+
 
 
 
@@ -227,11 +231,13 @@ function ReadingDetail(){
 
 
 
+
             const res = await api.get(
 
                 `/dictionary/${cleanWord}?language=${data.source_language}`
 
             );
+
 
 
 
@@ -243,10 +249,15 @@ function ReadingDetail(){
 
 
 
+
         }catch(error){
 
 
-            console.error(error);
+            console.error(
+
+                error
+
+            );
 
 
             setWordInfo(null);
@@ -270,9 +281,12 @@ function ReadingDetail(){
 
         if(!wordInfo?.data){
 
+
             return;
 
+
         }
+
 
 
 
@@ -285,31 +299,43 @@ function ReadingDetail(){
 
                 {
 
+
                     word:
+
                         wordInfo.data.word,
 
 
                     lemma:
+
                         wordInfo.data.lemma,
 
 
                     definition:
+
                         wordInfo.data.definition,
 
 
                     translation:
-                        wordInfo.data.translations?.en || "",
+
+                        wordInfo.data.translations?.en
+
+                        ||
+
+                        "",
 
 
                     cefr:
+
                         wordInfo.data.cefr,
 
 
                     pos:
+
                         wordInfo.data.pos,
 
 
                     source_language:
+
                         wordInfo.data.language
 
 
@@ -320,14 +346,28 @@ function ReadingDetail(){
 
 
             alert(
+
                 "Added!"
+
             );
+
 
 
         }catch(error){
 
 
-            console.error(error);
+            console.error(
+
+                error
+
+            );
+
+
+            alert(
+
+                "Failed to add vocabulary"
+
+            );
 
 
         }
@@ -348,9 +388,7 @@ function ReadingDetail(){
 
         return (
 
-            <div style={{
-                padding:"40px"
-            }}>
+            <div className="loading-page">
 
                 Loading...
 
@@ -374,15 +412,7 @@ function ReadingDetail(){
 
         return (
 
-            <div
-
-            style={{
-
-                padding:"40px"
-
-            }}
-
-            >
+            <div className="loading-page">
 
 
                 <h1>
@@ -400,8 +430,8 @@ function ReadingDetail(){
                 </p>
 
 
-
             </div>
+
 
         );
 
@@ -420,22 +450,18 @@ function ReadingDetail(){
 
         <div
 
-        style={{
-
-            display:"flex",
-
-            gap:"30px",
-
-            maxWidth:"1400px",
-
-            margin:"0 auto",
-
-            padding:"30px"
-
-        }}
+        className="reading-layout"
 
         >
 
+
+
+
+
+
+
+
+            {/* Article */}
 
 
 
@@ -443,7 +469,11 @@ function ReadingDetail(){
 
             style={{
 
-                flex:1
+                flex:1,
+
+                minWidth:0,
+
+                overflowWrap:"break-word"
 
             }}
 
@@ -454,24 +484,28 @@ function ReadingDetail(){
 
                 <h1>
 
-                    {data.title}
+                    {data.title || "Reading"}
 
                 </h1>
 
 
 
 
+
                 <p>
+
 
                     Difficulty:
 
                     {" "}
+
 
                     <b>
 
                         {data.difficulty}
 
                     </b>
+
 
                 </p>
 
@@ -485,11 +519,16 @@ function ReadingDetail(){
 
                 {
 
+
                 data.sentences &&
 
                 data.sentences.length > 0
 
+
+
                 ?
+
+
 
                 data.sentences.map(
 
@@ -499,6 +538,7 @@ function ReadingDetail(){
                     <section
 
                     key={sentence.id}
+
 
                     style={{
 
@@ -514,19 +554,36 @@ function ReadingDetail(){
 
                         {/* Original */}
 
+
+
                         <div
 
                         style={{
 
-                            fontSize:"18px",
+                            fontSize:
+
+                            isMobile
+
+                            ?
+
+                            "16px"
+
+                            :
+
+                            "18px",
+
 
                             lineHeight:"2",
 
+
                             display:"flex",
+
 
                             flexWrap:"wrap",
 
+
                             gap:"6px"
+
 
                         }}
 
@@ -534,71 +591,125 @@ function ReadingDetail(){
 
 
 
+
+
                         {
+
 
                         sentence.words &&
 
                         sentence.words.length > 0
 
+
+
                         ?
+
 
 
                         sentence.words.map(
 
-                            word=>(
+                            word=>{
+
+
+                            const normalizedWord =
+
+
+                                word.word
+
+                                .replace(
+
+                                    /[.,!?;:"'()]/g,
+
+                                    ""
+
+                                )
+
+                                .toLowerCase();
+
+
+
+
+                            return (
+
 
 
                             <span
 
+
                             key={word.id}
 
 
-                            onClick={()=>handleWordClick(
 
-                                word.word
+                            onClick={()=>
 
-                            )}
+
+                                handleWordClick(
+
+                                    word.word
+
+                                )
+
+                            }
+
 
 
                             style={{
 
+
                                 cursor:"pointer",
+
 
                                 padding:"3px 5px",
 
+
                                 borderRadius:"5px",
+
 
                                 background:
 
-                                selectedWord ===
 
-                                word.word.toLowerCase()
+                                selectedWord === normalizedWord
+
 
                                 ?
 
+
                                 "#fff3cd"
+
 
                                 :
 
+
                                 "transparent"
+
+
 
                             }}
 
+
                             >
 
+
+
                                 {word.word}
+
 
 
                             </span>
 
 
-                            )
+                            );
+
+
+                            }
 
 
                         )
 
 
+
                         :
+
 
 
                         <span>
@@ -608,7 +719,10 @@ function ReadingDetail(){
                         </span>
 
 
+
                         }
+
+
 
 
 
@@ -622,27 +736,56 @@ function ReadingDetail(){
 
 
 
-
                         {/* Translation */}
+
+
 
                         <p
 
                         style={{
 
+
                             marginTop:"12px",
+
 
                             color:"#64748b",
 
-                            lineHeight:"1.8"
+
+                            lineHeight:"1.8",
+
+
+                            fontSize:
+
+                            isMobile
+
+                            ?
+
+                            "14px"
+
+                            :
+
+                            "16px"
+
 
                         }}
 
                         >
 
 
-                            {sentence.translation ||
+                            {
 
-                            "Generating translation..."}
+
+                            sentence.translation
+
+
+                            ||
+
+
+                            "Generating translation..."
+
+
+                            }
+
 
 
                         </p>
@@ -660,7 +803,9 @@ function ReadingDetail(){
                 )
 
 
+
                 :
+
 
 
                 <p>
@@ -670,7 +815,10 @@ function ReadingDetail(){
                 </p>
 
 
+
                 }
+
+
 
 
 
@@ -684,136 +832,221 @@ function ReadingDetail(){
 
 
 
+            {/* Dictionary */}
+
+
+
             {
-                wordInfo &&
 
 
-                <aside
-
-                style={{
-
-                    width:"320px",
-
-                    padding:"20px",
-
-                    border:"1px solid #ddd",
-
-                    borderRadius:"12px"
-
-                }}
-
-                >
+            wordInfo &&
 
 
 
-                    <h2>
+            <aside
 
-                        {selectedWord}
+            className="dictionary-panel"
 
-                    </h2>
+            >
 
 
 
+
+
+                <h2>
+
+                    {selectedWord}
+
+                </h2>
+
+
+
+
+
+
+                {
+
+
+                wordInfo.found
+
+
+
+                ?
+
+
+
+                <>
+
+
+
+                <p>
+
+                    <b>
+
+                        Lemma:
+
+                    </b>
+
+
+                    {" "}
+
+
+                    {wordInfo.data.lemma}
+
+
+                </p>
+
+
+
+
+
+                <p>
+
+                    <b>
+
+                        POS:
+
+                    </b>
+
+
+                    {" "}
+
+
+                    {wordInfo.data.pos}
+
+
+                </p>
+
+
+
+
+
+                <p>
+
+                    <b>
+
+                        CEFR:
+
+                    </b>
+
+
+                    {" "}
+
+
+                    {wordInfo.data.cefr}
+
+
+                </p>
+
+
+
+
+
+                <p>
+
+                    <b>
+
+                        Definition:
+
+                    </b>
+
+
+                    {" "}
+
+
+                    {wordInfo.data.definition}
+
+
+                </p>
+
+
+
+
+
+                <p>
+
+                    <b>
+
+                        Translation:
+
+                    </b>
+
+
+                    {" "}
 
 
                     {
 
-                    wordInfo.found
 
+                    wordInfo.data.translations?.en
 
-                    ?
+                    ||
 
-                    <>
-
-                    <p>
-
-                    <b>Lemma:</b>
-
-                    {" "}
-
-                    {wordInfo.data.lemma}
-
-                    </p>
-
-
-
-                    <p>
-
-                    <b>POS:</b>
-
-                    {" "}
-
-                    {wordInfo.data.pos}
-
-                    </p>
-
-
-
-                    <p>
-
-                    <b>CEFR:</b>
-
-                    {" "}
-
-                    {wordInfo.data.cefr}
-
-                    </p>
-
-
-
-                    <p>
-
-                    <b>Definition:</b>
-
-                    {" "}
-
-                    {wordInfo.data.definition}
-
-                    </p>
-
-
-
-                    <button
-
-                    onClick={addVocabulary}
-
-                    >
-
-                        Add Vocabulary
-
-                    </button>
-
-
-                    </>
-
-
-                    :
-
-
-                    <p>
-
-                        Word not found.
-
-                    </p>
+                    "-"
 
 
                     }
 
 
+                </p>
 
-                </aside>
+
+
+
+
+
+                <button
+
+                onClick={addVocabulary}
+
+                >
+
+                    Add Vocabulary
+
+                </button>
+
+
+
+
+
+                </>
+
+
+
+                :
+
+
+
+                <p>
+
+                    Word not found.
+
+                </p>
+
+
+
+                }
+
+
+
+
+            </aside>
+
 
 
             }
 
 
 
+
         </div>
+
 
     );
 
 
 }
+
 
 
 export default ReadingDetail;

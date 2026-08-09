@@ -18,7 +18,6 @@ function Navbar(){
     const location = useLocation();
 
 
-
     const [language,setLanguage] = useState(
 
         localStorage.getItem(
@@ -28,6 +27,11 @@ function Navbar(){
         "de"
 
     );
+
+
+    const [menuOpen,setMenuOpen] = useState(false);
+
+
 
 
 
@@ -70,19 +74,20 @@ function Navbar(){
 
 
 
-
-        // notify all pages
-
         window.dispatchEvent(
 
             new Event(
+
                 "languageChange"
+
             )
 
         );
 
 
     }
+
+
 
 
 
@@ -109,13 +114,30 @@ function Navbar(){
 
 
 
-    const linkStyle = (path)=>({
+
+    function closeMenu(){
+
+
+        setMenuOpen(false);
+
+
+    }
+
+
+
+
+
+
+
+
+
+    const linkStyle=(path)=>({
 
 
         textDecoration:"none",
 
 
-        padding:"8px 14px",
+        padding:"10px 14px",
 
 
         borderRadius:"10px",
@@ -125,9 +147,6 @@ function Navbar(){
 
 
         fontWeight:"500",
-
-
-        transition:"all 0.2s ease",
 
 
         color:
@@ -142,7 +161,6 @@ function Navbar(){
             :
 
             "#374151",
-
 
 
 
@@ -173,12 +191,10 @@ function Navbar(){
     return (
 
 
-
         <nav
 
 
         style={{
-
 
 
             position:"sticky",
@@ -187,26 +203,10 @@ function Navbar(){
             top:0,
 
 
-            zIndex:100,
+            zIndex:1000,
 
 
-
-            display:"flex",
-
-
-            alignItems:"center",
-
-
-            gap:"10px",
-
-
-
-            padding:"16px 40px",
-
-
-
-            background:"#ffffff",
-
+            background:"#fff",
 
 
             borderBottom:
@@ -214,185 +214,15 @@ function Navbar(){
             "1px solid #e5e7eb",
 
 
-
             boxShadow:
 
             "0 2px 12px rgba(0,0,0,0.05)"
 
 
-
         }}
 
 
-
         >
-
-
-
-
-
-
-
-
-
-            <Link
-
-
-            to="/readings"
-
-
-            style={{
-
-
-                textDecoration:"none",
-
-
-                fontSize:"20px",
-
-
-                fontWeight:"700",
-
-
-                color:"#111827",
-
-
-                marginRight:"25px",
-
-
-                whiteSpace:"nowrap"
-
-
-            }}
-
-
-            >
-
-                AI Learning
-
-
-            </Link>
-
-
-
-
-
-
-
-
-
-            <Link
-
-
-            to="/readings"
-
-
-            style={
-
-                linkStyle(
-                    "/readings"
-                )
-
-            }
-
-
-            >
-
-                Readings
-
-
-            </Link>
-
-
-
-
-
-
-
-
-
-            <Link
-
-
-            to="/writing"
-
-
-            style={
-
-                linkStyle(
-                    "/writing"
-                )
-
-            }
-
-
-            >
-
-                AI Writing
-
-
-            </Link>
-
-
-
-
-
-
-
-
-
-            <Link
-
-
-            to="/vocabulary"
-
-
-            style={
-
-                linkStyle(
-                    "/vocabulary"
-                )
-
-            }
-
-
-            >
-
-                Vocabulary
-
-
-            </Link>
-
-
-
-
-
-
-
-
-
-            <Link
-
-
-            to="/flashcards"
-
-
-            style={
-
-                linkStyle(
-                    "/flashcards"
-                )
-
-            }
-
-
-            >
-
-                Flashcards
-
-
-            </Link>
-
-
 
 
 
@@ -406,13 +236,423 @@ function Navbar(){
             style={{
 
 
-                marginLeft:"auto"
+                display:"flex",
+
+
+                alignItems:"center",
+
+
+                justifyContent:"space-between",
+
+
+                padding:
+
+                "14px clamp(16px,4vw,40px)"
+
+
+            }}
+
+
+
+            >
+
+
+
+
+
+
+                {/* Logo */}
+
+
+
+                <Link
+
+
+                to="/readings"
+
+
+                onClick={closeMenu}
+
+
+                style={{
+
+
+                    textDecoration:"none",
+
+
+                    fontSize:"20px",
+
+
+                    fontWeight:"700",
+
+
+                    color:"#111827"
+
+
+                }}
+
+
+                >
+
+                    AI Learning
+
+                </Link>
+
+
+
+
+
+
+
+
+
+                {/* Desktop Menu */}
+
+
+
+                <div
+
+
+                className="desktop-navbar"
+
+
+                style={{
+
+
+                    display:"flex",
+
+
+                    alignItems:"center",
+
+
+                    gap:"8px",
+
+
+                    marginLeft:"20px",
+
+
+                    flex:1
+
+
+                }}
+
+
+                >
+
+
+
+
+
+                    <Link
+
+                    to="/readings"
+
+                    style={linkStyle("/readings")}
+
+                    >
+
+                        Readings
+
+                    </Link>
+
+
+
+
+
+                    <Link
+
+                    to="/writing"
+
+                    style={linkStyle("/writing")}
+
+                    >
+
+                        AI Writing
+
+                    </Link>
+
+
+
+
+
+                    <Link
+
+                    to="/vocabulary"
+
+                    style={linkStyle("/vocabulary")}
+
+                    >
+
+                        Vocabulary
+
+                    </Link>
+
+
+
+
+
+                    <Link
+
+                    to="/flashcards"
+
+                    style={linkStyle("/flashcards")}
+
+                    >
+
+                        Flashcards
+
+                    </Link>
+
+
+
+
+
+
+
+                    <div
+
+                    style={{
+
+                        marginLeft:"auto"
+
+                    }}
+
+                    >
+
+
+
+                        <button
+
+
+                        onClick={changeLanguage}
+
+
+                        style={{
+
+                            border:"none",
+
+                            background:"#f3f4f6",
+
+                            padding:"10px 14px",
+
+                            borderRadius:"12px",
+
+                            cursor:"pointer",
+
+                            fontWeight:"600"
+
+                        }}
+
+
+                        >
+
+
+                            {
+
+                            language==="de"
+
+                            ?
+
+                            "🇩🇪 German"
+
+                            :
+
+                            "🇬🇧 English"
+
+
+                            }
+
+                            {" ⇄ "}
+
+
+                        </button>
+
+
+
+                    </div>
+
+
+
+
+                </div>
+
+
+
+
+
+
+
+
+
+                {/* Mobile Button */}
+
+
+
+                <button
+
+
+                className="mobile-menu-button"
+
+
+                onClick={()=>setMenuOpen(!menuOpen)}
+
+
+
+                style={{
+
+
+                    display:"none",
+
+
+                    border:"none",
+
+
+                    background:"#f3f4f6",
+
+
+                    borderRadius:"10px",
+
+
+                    padding:"10px 14px",
+
+
+                    fontSize:"22px",
+
+
+                    cursor:"pointer"
+
+
+                }}
+
+
+
+                >
+
+                    ☰
+
+                </button>
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            {/* Mobile Menu */}
+
+
+
+            {
+
+            menuOpen &&
+
+
+            <div
+
+
+            className="mobile-menu"
+
+
+            style={{
+
+
+                display:"flex",
+
+
+                flexDirection:"column",
+
+
+                padding:"10px 16px 20px",
+
+
+                gap:"8px"
 
 
             }}
 
 
             >
+
+
+
+
+                <Link
+
+                to="/readings"
+
+                onClick={closeMenu}
+
+                style={linkStyle("/readings")}
+
+                >
+
+                    Readings
+
+                </Link>
+
+
+
+
+
+                <Link
+
+                to="/writing"
+
+                onClick={closeMenu}
+
+                style={linkStyle("/writing")}
+
+                >
+
+                    AI Writing
+
+                </Link>
+
+
+
+
+
+                <Link
+
+                to="/vocabulary"
+
+                onClick={closeMenu}
+
+                style={linkStyle("/vocabulary")}
+
+                >
+
+                    Vocabulary
+
+                </Link>
+
+
+
+
+
+                <Link
+
+                to="/flashcards"
+
+                onClick={closeMenu}
+
+                style={linkStyle("/flashcards")}
+
+                >
+
+                    Flashcards
+
+                </Link>
+
+
 
 
 
@@ -424,41 +664,25 @@ function Navbar(){
                 onClick={changeLanguage}
 
 
-
                 style={{
 
+
+                    marginTop:"10px",
+
+
+                    padding:"12px",
 
 
                     border:"none",
 
 
+                    borderRadius:"12px",
+
 
                     background:"#f3f4f6",
 
 
-
-                    padding:"10px 16px",
-
-
-
-                    borderRadius:"12px",
-
-
-
-                    cursor:"pointer",
-
-
-
-                    fontSize:"15px",
-
-
-
-                    fontWeight:"600",
-
-
-
-                    transition:"all 0.2s ease"
-
+                    fontWeight:"600"
 
 
                 }}
@@ -468,52 +692,20 @@ function Navbar(){
                 >
 
 
-
-
-
                     {
 
+                    language==="de"
 
-                        language === "de"
+                    ?
 
+                    "🇩🇪 German ⇄"
 
-                        ?
+                    :
 
-
-                        "🇩🇪 German"
-
-
-                        :
-
-
-                        "🇬🇧 English"
-
+                    "🇬🇧 English ⇄"
 
 
                     }
-
-
-
-
-
-                    <span
-
-
-                    style={{
-
-
-                        marginLeft:"8px"
-
-
-                    }}
-
-
-                    >
-
-                        ⇄
-
-                    </span>
-
 
 
                 </button>
@@ -525,6 +717,7 @@ function Navbar(){
             </div>
 
 
+            }
 
 
 

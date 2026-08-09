@@ -8,6 +8,8 @@ import api from "../api/axios";
 
 
 
+
+
 function Flashcards(){
 
 
@@ -39,6 +41,66 @@ function Flashcards(){
         "de"
 
     );
+
+
+
+    const [isMobile,setIsMobile] = useState(
+
+        window.innerWidth <= 768
+
+    );
+
+
+
+
+
+
+
+
+
+    useEffect(()=>{
+
+
+        function resize(){
+
+
+            setIsMobile(
+
+                window.innerWidth <= 768
+
+            );
+
+
+        }
+
+
+
+        window.addEventListener(
+
+            "resize",
+
+            resize
+
+        );
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "resize",
+
+                resize
+
+            );
+
+
+        };
+
+
+    },[]);
 
 
 
@@ -87,11 +149,7 @@ function Flashcards(){
 
 
 
-    async function loadCards(
-
-        setNumber
-
-    ){
+    async function loadCards(setNumber){
 
 
         try{
@@ -205,7 +263,6 @@ function Flashcards(){
 
 
 
-
         window.addEventListener(
 
             "languageChange",
@@ -243,16 +300,10 @@ function Flashcards(){
 
 
 
-    async function updateStatus(
-
-        status
-
-    ){
+    async function updateStatus(status){
 
 
-        const card =
-
-            cards[currentIndex];
+        const card = cards[currentIndex];
 
 
 
@@ -261,7 +312,6 @@ function Flashcards(){
             return;
 
         }
-
 
 
 
@@ -315,9 +365,7 @@ function Flashcards(){
 
         if(
 
-            currentIndex <
-
-            cards.length - 1
+            currentIndex < cards.length - 1
 
         ){
 
@@ -364,6 +412,7 @@ function Flashcards(){
         );
 
 
+
         loadCards(
 
             number
@@ -386,15 +435,7 @@ function Flashcards(){
 
         return (
 
-            <div
-
-            style={{
-
-                padding:"40px"
-
-            }}
-
-            >
+            <div className="loading-page">
 
                 Loading flashcards...
 
@@ -412,20 +453,12 @@ function Flashcards(){
 
 
 
-    if(cards.length===0){
+    if(cards.length === 0){
 
 
         return (
 
-            <div
-
-            style={{
-
-                padding:"40px"
-
-            }}
-
-            >
+            <div className="flashcards-page">
 
 
                 <h1>
@@ -443,10 +476,11 @@ function Flashcards(){
                 </p>
 
 
+
             </div>
 
-
         );
+
 
     }
 
@@ -457,9 +491,8 @@ function Flashcards(){
 
 
 
-    const card =
 
-        cards[currentIndex];
+    const card = cards[currentIndex];
 
 
 
@@ -473,19 +506,46 @@ function Flashcards(){
 
         <div
 
+        className="flashcards-page"
+
         style={{
+
+            width:"100%",
 
             maxWidth:"700px",
 
-            margin:"40px auto",
+            margin:
 
-            textAlign:"center",
+                isMobile
 
-            padding:"20px"
+                ?
+
+                "20px auto"
+
+                :
+
+                "40px auto",
+
+            padding:
+
+                isMobile
+
+                ?
+
+                "0 16px"
+
+                :
+
+                "0 30px",
+
+            textAlign:"center"
 
         }}
 
         >
+
+
+
 
 
 
@@ -499,19 +559,13 @@ function Flashcards(){
 
 
 
-            <p
 
-            style={{
+            <p className="subtitle">
 
-                color:"#666"
-
-            }}
-
-            >
 
                 {
 
-                    language==="de"
+                    language === "de"
 
                     ?
 
@@ -520,6 +574,7 @@ function Flashcards(){
                     :
 
                     "🇬🇧 English"
+
 
                 }
 
@@ -532,56 +587,118 @@ function Flashcards(){
 
 
 
-            <div>
+
+
+            <div
+
+            className="flashcard-sets"
+
+            style={{
+
+                display:"flex",
+
+                flexWrap:"wrap",
+
+                justifyContent:"center",
+
+                gap:"8px",
+
+                marginBottom:"20px"
+
+            }}
+
+            >
+
+
 
             {
 
-                sets.map(
+            sets.map(
 
-                    s=>(
-
-
-                    <button
-
-                    key={
-
-                        s.set_number
-
-                    }
+                s=>(
 
 
-                    onClick={()=>changeSet(
-
-                        s.set_number
-
-                    )}
+                <button
 
 
-                    style={{
-
-                        margin:"5px",
-
-                        padding:"8px 15px",
-
-                        borderRadius:"8px",
-
-                        cursor:"pointer"
-
-                    }}
-
-                    >
-
-                        Set {s.set_number}
-
-                    </button>
+                key={s.set_number}
 
 
-                    )
+                onClick={()=>changeSet(
+
+                    s.set_number
+
+                )}
+
+
+                style={{
+
+
+                    padding:
+
+                        isMobile
+
+                        ?
+
+                        "8px 12px"
+
+                        :
+
+                        "8px 15px",
+
+
+                    borderRadius:"10px",
+
+
+                    border:
+
+                    currentSet === s.set_number
+
+                    ?
+
+                    "2px solid #2563eb"
+
+                    :
+
+                    "1px solid #ddd",
+
+
+                    background:
+
+                    currentSet === s.set_number
+
+                    ?
+
+                    "#eff6ff"
+
+                    :
+
+                    "white",
+
+
+                    cursor:"pointer"
+
+                }}
+
+
+
+                >
+
+
+                    Set {s.set_number}
+
+
+                </button>
 
 
                 )
 
+
+            )
+
+
             }
+
 
 
             </div>
@@ -619,6 +736,10 @@ function Flashcards(){
 
             <div
 
+
+            className="flashcard"
+
+
             onClick={()=>setShowBack(
 
                 !showBack
@@ -628,33 +749,82 @@ function Flashcards(){
 
             style={{
 
-                height:"260px",
+
+                width:"100%",
+
+
+                minHeight:
+
+                    isMobile
+
+                    ?
+
+                    "220px"
+
+                    :
+
+                    "260px",
+
 
                 border:"1px solid #ddd",
 
-                borderRadius:"16px",
+
+                borderRadius:"18px",
+
 
                 display:"flex",
 
+
                 alignItems:"center",
+
 
                 justifyContent:"center",
 
-                padding:"30px",
+
+                padding:
+
+                    isMobile
+
+                    ?
+
+                    "20px"
+
+                    :
+
+                    "30px",
+
 
                 cursor:"pointer",
 
-                fontSize:"30px",
 
-                background:"#fff",
+                fontSize:
+
+                    isMobile
+
+                    ?
+
+                    "22px"
+
+                    :
+
+                    "30px",
+
+
+                background:"white",
+
 
                 boxShadow:
 
                 "0 4px 15px rgba(0,0,0,0.1)",
 
-                whiteSpace:"pre-line"
+
+                whiteSpace:"pre-line",
+
+
+                overflowWrap:"break-word"
 
             }}
+
 
             >
 
@@ -686,6 +856,8 @@ function Flashcards(){
 
             <p
 
+            className="flip-hint"
+
             style={{
 
                 color:"#777"
@@ -708,13 +880,33 @@ function Flashcards(){
 
             <div
 
+            className="flashcard-actions"
+
+
             style={{
+
 
                 display:"flex",
 
+
+                flexDirection:
+
+                    isMobile
+
+                    ?
+
+                    "column"
+
+                    :
+
+                    "row",
+
+
                 justifyContent:"center",
 
-                gap:"20px",
+
+                gap:"15px",
+
 
                 marginTop:"30px"
 
@@ -723,13 +915,28 @@ function Flashcards(){
             >
 
 
+
+
                 <button
+
 
                 onClick={()=>updateStatus(
 
                     "learning"
 
                 )}
+
+
+                style={{
+
+
+                    padding:"12px 25px",
+
+                    borderRadius:"10px",
+
+                    cursor:"pointer"
+
+                }}
 
                 >
 
@@ -740,13 +947,27 @@ function Flashcards(){
 
 
 
+
                 <button
+
 
                 onClick={()=>updateStatus(
 
                     "mastered"
 
                 )}
+
+
+                style={{
+
+
+                    padding:"12px 25px",
+
+                    borderRadius:"10px",
+
+                    cursor:"pointer"
+
+                }}
 
                 >
 
@@ -755,7 +976,14 @@ function Flashcards(){
                 </button>
 
 
+
+
+
             </div>
+
+
+
+
 
 
 

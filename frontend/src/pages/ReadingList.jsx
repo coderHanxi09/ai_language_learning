@@ -18,24 +18,23 @@ import api from "../api/axios";
 function ReadingList(){
 
 
-    const [readings,setReadings]
-        = useState([]);
+    const [readings,setReadings] = useState([]);
 
 
-    const [language,setLanguage]
-        = useState(
 
-            localStorage.getItem(
-                "learningLanguage"
-            )
-            ||
-            "de"
+    const [language,setLanguage] = useState(
 
-        );
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de"
+
+    );
 
 
-    const [loading,setLoading]
-        = useState(true);
+
+    const [loading,setLoading] = useState(true);
 
 
 
@@ -63,21 +62,20 @@ function ReadingList(){
 
 
 
+            const filtered = res.data.filter(
 
 
-            const filtered =
-
-                res.data.filter(
-
-                    reading =>
-
-                        reading.source_language
-                        ===
-                        language
-
-                );
+                reading =>
 
 
+                    reading.source_language
+
+                    ===
+
+                    language
+
+
+            );
 
 
 
@@ -97,6 +95,7 @@ function ReadingList(){
                 error
 
             );
+
 
 
         }finally{
@@ -124,7 +123,6 @@ function ReadingList(){
         loadReadings();
 
 
-
     },[language]);
 
 
@@ -141,28 +139,24 @@ function ReadingList(){
         function updateLanguage(){
 
 
-            const newLanguage =
+            setLanguage(
+
 
                 localStorage.getItem(
 
                     "learningLanguage"
 
                 )
+
                 ||
-                "de";
 
+                "de"
 
-
-            setLanguage(
-
-                newLanguage
 
             );
 
 
         }
-
-
 
 
 
@@ -175,7 +169,6 @@ function ReadingList(){
             updateLanguage
 
         );
-
 
 
 
@@ -196,7 +189,6 @@ function ReadingList(){
         };
 
 
-
     },[]);
 
 
@@ -212,17 +204,7 @@ function ReadingList(){
 
         return (
 
-            <div
-
-            style={{
-
-                textAlign:"center",
-
-                marginTop:"80px"
-
-            }}
-
-            >
+            <div className="loading-page">
 
                 Loading readings...
 
@@ -244,61 +226,24 @@ function ReadingList(){
     return (
 
 
-        <div
-
-        style={{
-
-
-            maxWidth:"1100px",
-
-
-            margin:"40px auto",
-
-
-            padding:"0 30px"
-
-
-        }}
-
-        >
+        <div className="reading-list-page">
 
 
 
 
 
+            {/* Header */}
 
 
-            <div
 
-            style={{
-
-                display:"flex",
-
-                justifyContent:"space-between",
-
-                alignItems:"center",
-
-                marginBottom:"35px"
-
-            }}
-
-            >
-
+            <div className="reading-list-header">
 
 
 
                 <div>
 
 
-                    <h1
-
-                    style={{
-
-                        marginBottom:"8px"
-
-                    }}
-
-                    >
+                    <h1>
 
                         My Readings
 
@@ -307,29 +252,21 @@ function ReadingList(){
 
 
 
+                    <p className="subtitle">
 
-                    <p
-
-                    style={{
-
-                        color:"#6b7280"
-
-                    }}
-
-                    >
 
                         {
 
 
-                            language === "de"
+                        language === "de"
 
-                            ?
+                        ?
 
-                            "🇩🇪 German readings"
+                        "🇩🇪 German readings"
 
-                            :
+                        :
 
-                            "🇬🇧 English readings"
+                        "🇬🇧 English readings"
 
 
                         }
@@ -346,39 +283,18 @@ function ReadingList(){
 
 
 
+
                 <Link
 
                 to="/create"
 
-                style={{
-
-
-                    textDecoration:"none",
-
-
-                    background:"#2563eb",
-
-
-                    color:"white",
-
-
-                    padding:"12px 20px",
-
-
-                    borderRadius:"12px",
-
-
-                    fontWeight:"600"
-
-
-                }}
+                className="create-button"
 
                 >
 
                     + Create Reading
 
                 </Link>
-
 
 
 
@@ -399,34 +315,14 @@ function ReadingList(){
             readings.length === 0
 
 
+
             ?
+
 
 
             (
 
-                <div
-
-                style={{
-
-
-                    textAlign:"center",
-
-
-                    padding:"60px",
-
-
-                    background:"#f9fafb",
-
-
-                    borderRadius:"20px",
-
-
-                    color:"#6b7280"
-
-
-                }}
-
-                >
+                <div className="empty-box">
 
 
                     No readings available.
@@ -445,22 +341,7 @@ function ReadingList(){
 
             (
 
-                <div
-
-                style={{
-
-                    display:"grid",
-
-                    gridTemplateColumns:
-
-                    "repeat(auto-fill,minmax(300px,1fr))",
-
-                    gap:"20px"
-
-                }}
-
-                >
-
+                <div className="reading-grid">
 
 
 
@@ -469,72 +350,28 @@ function ReadingList(){
 
                 readings.map(
 
-                    reading=>(
+                    reading => (
 
 
                     <Link
 
-                    key={
 
-                        reading.id
-
-                    }
+                    key={reading.id}
 
 
-                    to={
-
-                        `/readings/${reading.id}`
-
-                    }
+                    to={`/readings/${reading.id}`}
 
 
-                    style={{
+                    className="reading-card-link"
 
-
-                        textDecoration:"none",
-
-
-                        color:"inherit"
-
-
-                    }}
 
                     >
 
 
 
 
+                        <div className="reading-card">
 
-                        <div
-
-                        style={{
-
-
-                            background:"white",
-
-
-                            border:
-
-                            "1px solid #e5e7eb",
-
-
-                            borderRadius:"18px",
-
-
-                            padding:"24px",
-
-
-                            minHeight:"150px",
-
-
-                            boxShadow:
-
-                            "0 4px 12px rgba(0,0,0,0.05)"
-
-
-                        }}
-
-                        >
 
 
 
@@ -544,11 +381,12 @@ function ReadingList(){
 
                                 {
 
-                                    reading.title
 
-                                    ||
+                                reading.title
 
-                                    "Untitled Reading"
+                                ||
+
+                                "Untitled Reading"
 
 
                                 }
@@ -560,30 +398,17 @@ function ReadingList(){
 
 
 
-
-                            <p
-
-                            style={{
-
-
-                                color:"#6b7280",
-
-
-                                lineHeight:"1.5"
-
-
-                            }}
-
-                            >
+                            <p>
 
 
                                 {
 
-                                    reading.difficulty
 
-                                    ||
+                                reading.difficulty
 
-                                    "B2"
+                                ||
+
+                                "B2"
 
 
                                 }
@@ -596,66 +421,32 @@ function ReadingList(){
 
 
 
+
                             <span
 
-                            style={{
 
-
-                                display:"inline-block",
-
-
-                                marginTop:"15px",
-
-
-                                padding:"5px 12px",
-
-
-                                borderRadius:"20px",
-
-
-                                background:
+                            className={
 
                                 reading.status === "completed"
 
                                 ?
 
-                                "#dcfce7"
+                                "status completed"
 
                                 :
 
-                                "#fef3c7",
+                                "status processing"
 
+                            }
 
-                                color:
-
-                                reading.status === "completed"
-
-                                ?
-
-                                "#166534"
-
-                                :
-
-                                "#92400e",
-
-
-                                fontSize:"13px"
-
-
-                            }}
 
                             >
 
 
-                                {
-
-                                    reading.status
-
-                                }
+                                {reading.status}
 
 
                             </span>
-
 
 
 
@@ -685,7 +476,6 @@ function ReadingList(){
 
 
             }
-
 
 
 

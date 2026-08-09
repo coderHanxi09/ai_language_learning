@@ -1,5 +1,6 @@
 import {
-    useState
+    useState,
+    useEffect
 } from "react";
 
 
@@ -12,11 +13,27 @@ import api from "../api/axios";
 
 
 
+
+
 function CreateReading(){
 
 
-    const [content,setContent]
-        = useState("");
+    const [content,setContent] = useState("");
+
+
+    const [loading,setLoading] = useState(false);
+
+
+
+    const [language,setLanguage] = useState(
+
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de"
+
+    );
 
 
 
@@ -24,13 +41,7 @@ function CreateReading(){
 
 
 
-    const language =
 
-        localStorage.getItem(
-            "learningLanguage"
-        )
-        ||
-        "de";
 
 
 
@@ -53,20 +64,97 @@ function CreateReading(){
 
 
 
+
+    // =========================
+    // Sync Navbar language change
+    // =========================
+
+
+    useEffect(()=>{
+
+
+        function updateLanguage(){
+
+
+            setLanguage(
+
+                localStorage.getItem(
+
+                    "learningLanguage"
+
+                )
+                ||
+                "de"
+
+            );
+
+
+        }
+
+
+
+
+
+        window.addEventListener(
+
+            "languageChange",
+
+            updateLanguage
+
+        );
+
+
+
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "languageChange",
+
+                updateLanguage
+
+            );
+
+
+        };
+
+
+
+    },[]);
+
+
+
+
+
+
+
+
+
     async function handleSubmit(){
+
 
 
         if(!content.trim()){
 
 
             alert(
+
                 "Please enter text"
+
             );
 
 
             return;
 
+
         }
+
+
+
 
 
 
@@ -74,11 +162,18 @@ function CreateReading(){
         try{
 
 
+            setLoading(true);
+
+
+
+
+
             const res = await api.post(
 
                 "/readings",
 
                 {
+
 
                     title:null,
 
@@ -89,26 +184,18 @@ function CreateReading(){
                     source_language:language,
 
 
-                    translation_language:translationLanguage,
+                    translation_language:
+
+                        translationLanguage,
 
 
                     difficulty:"B2"
+
 
                 }
 
             );
 
-
-
-
-
-            console.log(
-
-                "CREATE READING:",
-
-                res.data
-
-            );
 
 
 
@@ -129,13 +216,25 @@ function CreateReading(){
 
 
             console.error(
+
                 error
+
             );
+
 
 
             alert(
+
                 "Failed to create reading"
+
             );
+
+
+
+        }finally{
+
+
+            setLoading(false);
 
 
         }
@@ -148,82 +247,174 @@ function CreateReading(){
 
 
 
+
+
+
     return (
 
-        <div>
+
+        <div
+
+        className="create-reading-page"
+
+        >
+
+
+
 
 
             <h1>
+
                 Import Reading
+
             </h1>
+
+
+
+
+
+
+            <p
+
+            className="subtitle"
+
+            >
+
+
+                {
+
+
+                language === "de"
+
+                ?
+
+                "Paste a German article and start learning."
+
+                :
+
+                "Paste an English article and start learning."
+
+
+
+                }
+
+
+            </p>
+
+
+
+
+
+
 
 
 
             <textarea
 
-                rows="15"
 
-                style={{
-
-                    width:"100%",
-
-                    maxWidth:"900px"
-
-                }}
+            className="reading-input"
 
 
-                placeholder={
 
-                    language === "de"
-
-                    ?
-
-                    "Paste your German article here..."
-
-                    :
-
-                    "Paste your English article here..."
-
-                }
+            rows="15"
 
 
-                value={content}
+
+            placeholder={
 
 
-                onChange={
+                language === "de"
 
-                    e=>
+                ?
 
-                    setContent(
+                "Paste your German article here..."
 
-                        e.target.value
+                :
 
-                    )
+                "Paste your English article here..."
 
-                }
+
+            }
+
+
+
+            value={content}
+
+
+
+            onChange={
+
+                e=>
+
+                setContent(
+
+                    e.target.value
+
+                )
+
+            }
+
 
 
             />
 
 
 
-            <br/>
+
+
+
+
 
             <button
 
-                onClick={handleSubmit}
+
+            className="start-button"
+
+
+
+            onClick={handleSubmit}
+
+
+
+            disabled={loading}
+
+
 
             >
 
-                Start Learning
+
+
+                {
+
+
+                loading
+
+                ?
+
+                "Creating..."
+
+                :
+
+                "Start Learning"
+
+
+
+                }
+
+
 
             </button>
 
 
 
+
+
+
         </div>
 
+
     );
+
 
 }
 
