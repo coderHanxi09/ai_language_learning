@@ -158,13 +158,10 @@ def save_reading(
 
 ):
 
-
     session = SessionLocal()
 
 
-
     try:
-
 
 
         translation_language = (
@@ -180,66 +177,38 @@ def save_reading(
         )
 
 
-
-
-
         reading = ReadingDB(
 
-
-            title="AI Generated Reading",
-
+            title="Generating title...",
 
             content=content,
 
-
             source_language=language,
-
 
             translation_language=translation_language,
 
-
             difficulty=level,
-
 
             vocabulary="[]",
 
-
             status="processing"
 
-
         )
 
 
-
-        session.add(
-
-            reading
-
-        )
-
+        session.add(reading)
 
         session.commit()
 
-
-
-        session.refresh(
-
-            reading
-
-        )
+        session.refresh(reading)
 
 
         return reading.id
 
 
-
     finally:
 
-
         session.close()
-
-
-
 
 
 

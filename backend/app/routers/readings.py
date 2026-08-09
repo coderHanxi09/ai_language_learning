@@ -6,7 +6,6 @@ from fastapi import (
 
 from pydantic import BaseModel
 
-
 import json
 
 
@@ -33,6 +32,7 @@ from ..services.translation_service import (
 from ..services.word_token_service import (
     analyze_sentence
 )
+
 
 from ..ai.factory import get_ai_provider
 
@@ -78,7 +78,11 @@ class ReadingRequest(BaseModel):
 
 
 def generate_title(
-    content:str
+
+    content: str,
+
+    source_language: str = "de"
+
 ):
 
 
@@ -92,11 +96,27 @@ def generate_title(
 
 
 
+    language_name = (
+
+        "German"
+
+        if source_language == "de"
+
+        else
+
+        "English"
+
+    )
+
+
+
     prompt = f"""
-Generate a short and meaningful title for this German reading article.
+Generate a short and meaningful title for this
+{language_name} reading article.
 
 Requirements:
-- Language: German
+
+- Language: {language_name}
 - Maximum 8 words
 - Do not use quotation marks
 - Do not summarize too much
@@ -113,7 +133,9 @@ Article:
 
 
         title = provider.generate(
+
             prompt
+
         ).strip()
 
 
@@ -128,18 +150,27 @@ Article:
 
 
         print(
+
             "[TITLE GENERATION ERROR]",
+
             e
+
         )
 
 
 
 
-    # fallback
+
+    # =========================
+    # Fallback
+    # =========================
 
     sentences = split_sentences(
+
         content
+
     )
+
 
 
     if sentences:
@@ -149,13 +180,23 @@ Article:
 
 
 
-        if len(words)>8:
+        if len(words) > 8:
+
 
             return (
-                " ".join(words[:8])
+
+                " ".join(
+
+                    words[:8]
+
+                )
+
                 +
+
                 "..."
+
             )
+
 
 
         return sentences[0]
@@ -164,13 +205,23 @@ Article:
 
     return "Imported Reading"
 
+
+
+
+
+
+
+
+
 # =====================================================
 # Create Reading
 # =====================================================
 
 
 def create_reading(
-    payload:dict
+
+    payload: dict
+
 ):
 
 
@@ -181,20 +232,24 @@ def create_reading(
     try:
 
 
-        title = (
-            payload.get("title")
-            or
-            "Generating title..."
+        title = payload.get(
+
+            "title"
+
         )
 
 
 
+        # If no title was supplied,
+        # leave a temporary title.
+        # process_reading() will generate
+        # the correct language title later.
+
         if not title:
 
 
-            title = generate_title(
-                payload["content"]
-            )
+            title = "Generating title..."
+
 
 
 
@@ -209,46 +264,65 @@ def create_reading(
 
 
             difficulty=payload.get(
+
                 "difficulty",
+
                 "B2"
+
             ),
 
 
             source_language=payload.get(
+
                 "source_language",
+
                 "de"
+
             ),
 
 
             translation_language=payload.get(
+
                 "translation_language",
+
                 "en"
+
             ),
 
 
             vocabulary=json.dumps(
+
                 [],
+
                 ensure_ascii=False
+
             ),
 
 
             status="processing"
+
 
         )
 
 
 
         session.add(
+
             reading
+
         )
 
 
         session.commit()
 
 
+
         session.refresh(
+
             reading
+
         )
+
 
 
         return reading.id
@@ -259,6 +333,15 @@ def create_reading(
 
 
         session.close()
+
+
+
+
+
+
+
+
+
 # =====================================================
 # Save sentences
 # =====================================================
@@ -268,19 +351,21 @@ def save_sentences(
 
     session,
 
-    reading_id:int,
+    reading_id: int,
 
-    content:str,
+    content: str,
 
-    source_language:str,
+    source_language: str,
 
-    translation_language:str
+    translation_language: str
 
 ):
 
 
     sentences = split_sentences(
+
         content
+
     )
 
 
@@ -298,7 +383,10 @@ def save_sentences(
 
 
 
+
     translation_map = {}
+
+
 
 
 
@@ -317,7 +405,13 @@ def save_sentences(
 
 
 
-    for index, sentence in enumerate(sentences):
+
+
+    for index, sentence in enumerate(
+
+        sentences
+
+    ):
 
 
         sentence_db = ReadingSentenceDB(
@@ -343,12 +437,13 @@ def save_sentences(
 
 
         session.add(
+
             sentence_db
+
         )
 
 
         session.flush()
-
 
 
 
@@ -366,8 +461,11 @@ def save_sentences(
 
 
 
+        for position, token in enumerate(
 
-        for position, token in enumerate(tokens):
+            tokens
+
+        ):
 
 
             word_db = ReadingWordDB(
@@ -383,7 +481,9 @@ def save_sentences(
 
 
                 pos=token.get(
+
                     "pos"
+
                 ),
 
 
@@ -393,7 +493,9 @@ def save_sentences(
 
 
             session.add(
+
                 word_db
+
             )
 
 
@@ -411,9 +513,9 @@ def save_sentences(
 
 def process_reading(
 
-    reading_id:int,
+    reading_id: int,
 
-    payload:dict
+    payload: dict
 
 ):
 
@@ -421,13 +523,18 @@ def process_reading(
     session = SessionLocal()
 
 
+
     try:
 
 
         reading = session.query(
+
             ReadingDB
+
         ).filter(
+
             ReadingDB.id == reading_id
+
         ).first()
 
 
@@ -439,32 +546,68 @@ def process_reading(
 
 
 
+
         # =========================
-        # Generate title
+        # Generate title only when
+        # no meaningful title exists
         # =========================
 
-        try:
-
-            reading.title = generate_title(
-                payload["content"]
-            )
-
-            session.commit()
+        current_title = reading.title
 
 
-        except Exception as e:
+
+        if (
+
+            not current_title
+
+            or
+
+            current_title == "Generating title..."
+
+        ):
 
 
-            print(
-                "[TITLE ERROR]",
-                e
-            )
+            try:
 
 
-            reading.title = "Imported Reading"
+                reading.title = generate_title(
+
+                    payload["content"],
+
+                    payload.get(
+
+                        "source_language",
+
+                        "de"
+
+                    )
+
+                )
 
 
-            session.commit()
+
+                session.commit()
+
+
+
+            except Exception as e:
+
+
+                print(
+
+                    "[TITLE ERROR]",
+
+                    e
+
+                )
+
+
+                reading.title = "Imported Reading"
+
+
+                session.commit()
+
+
 
 
 
@@ -476,20 +619,31 @@ def process_reading(
 
         save_sentences(
 
+
             session,
+
 
             reading_id,
 
+
             payload["content"],
 
-            payload.get(
-                "source_language",
-                "de"
-            ),
 
             payload.get(
+
+                "source_language",
+
+                "de"
+
+            ),
+
+
+            payload.get(
+
                 "translation_language",
+
                 "en"
+
             )
 
         )
@@ -505,13 +659,17 @@ def process_reading(
         reading.status = "completed"
 
 
+
         session.commit()
 
 
 
         print(
+
             "[READING COMPLETED]",
+
             reading_id
+
         )
 
 
@@ -521,9 +679,13 @@ def process_reading(
 
 
         print(
+
             "[READING ERROR]",
+
             e
+
         )
+
 
 
         session.rollback()
@@ -531,16 +693,23 @@ def process_reading(
 
 
         reading = session.query(
+
             ReadingDB
+
         ).filter(
+
             ReadingDB.id == reading_id
+
         ).first()
 
 
 
         if reading:
 
+
             reading.status = "failed"
+
+
 
             session.commit()
 
@@ -548,9 +717,8 @@ def process_reading(
 
     finally:
 
+
         session.close()
-
-
 
 
 
@@ -580,7 +748,9 @@ def create_reading_api(
 
 
     if not payload.get(
+
         "content"
+
     ):
 
 
@@ -597,14 +767,18 @@ def create_reading_api(
 
 
     reading_id = create_reading(
+
         payload
+
     )
 
 
 
 
 
-    # run translation/tokenization later
+    # Run translation,
+    # tokenization and title generation
+    # in background.
 
     background_tasks.add_task(
 
@@ -631,18 +805,29 @@ def create_reading_api(
         "title":
 
             payload.get(
-                "title"
-            )
-            or "Generating title...",
 
+                "title"
+
+            )
+
+            or
+
+            "Generating title...",
 
 
         "status":
 
             "processing"
 
-
     }
+
+
+
+
+
+
+
+
 
 # =====================================================
 # GET /readings
@@ -675,6 +860,7 @@ def get_readings():
 
 
         return [
+
 
             {
 
@@ -732,8 +918,6 @@ def get_readings():
 
 
 
-
-
 # =====================================================
 # GET /readings/{reading_id}
 # =====================================================
@@ -742,7 +926,7 @@ def get_readings():
 @router.get("/readings/{reading_id}")
 def get_reading(
 
-    reading_id:int
+    reading_id: int
 
 ):
 
@@ -752,7 +936,6 @@ def get_reading(
 
 
     try:
-
 
 
         reading = session.query(
@@ -767,8 +950,6 @@ def get_reading(
 
 
 
-
-
         if not reading:
 
 
@@ -779,7 +960,6 @@ def get_reading(
                 detail="Reading not found"
 
             )
-
 
 
 
@@ -830,11 +1010,9 @@ def get_reading(
 
                             word.position
 
-
                     }
 
                 )
-
 
 
 
@@ -869,11 +1047,9 @@ def get_reading(
 
                         words
 
-
                 }
 
             )
-
 
 
 
@@ -922,7 +1098,6 @@ def get_reading(
             "sentences":
 
                 sentences
-
 
         }
 
