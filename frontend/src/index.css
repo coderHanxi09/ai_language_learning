@@ -1423,3 +1423,220 @@ nav{
 
 
 }
+.learning-reading-page{
+
+    width:100%;
+
+    max-width:850px;
+
+    margin:40px auto;
+
+    padding:0 30px;
+
+}
+
+
+
+.progress-container{
+
+    height:8px;
+
+    background:#e5e7eb;
+
+    border-radius:10px;
+
+    overflow:hidden;
+
+    margin:20px 0 30px;
+
+}
+
+
+
+.progress-bar{
+
+    height:100%;
+
+    background:#2563eb;
+
+}
+
+
+
+.sentence-card{
+
+    background:white;
+
+    border:1px solid #e5e7eb;
+
+    border-radius:20px;
+
+    padding:30px;
+
+    box-shadow:
+
+    0 8px 20px rgba(0,0,0,.05);
+
+}
+
+
+
+.sentence-original{
+
+    font-size:24px;
+
+    line-height:2;
+
+    color:#111827;
+
+    overflow-wrap:anywhere;
+
+    word-break:normal;
+
+}
+
+
+
+/*
+  Fix original sentence words wrapping
+  Keep spaces between words
+*/
+
+.sentence-original .word{
+
+    display:inline;
+
+    margin-right:6px;
+
+    padding:4px 2px;
+
+    cursor:pointer;
+
+    border-radius:6px;
+
+}
+
+
+
+.sentence-original .word:hover{
+
+    background:#ede9fe;
+
+}
+
+
+
+.sentence-original .word.selected{
+
+    background:#ddd6fe;
+
+}
+
+
+.sentence-translation{
+
+    margin-top:25px;
+
+    color:#64748b;
+
+    font-size:18px;
+
+    line-height:1.8;
+
+}
+
+
+
+.sentence-navigation{
+
+    display:flex;
+
+    justify-content:space-between;
+
+    margin-top:30px;
+
+}
+
+
+
+.word-popup{
+
+    position:fixed;
+
+    bottom:20px;
+
+    left:50%;
+
+    transform:translateX(-50%);
+
+    width:90%;
+
+    max-width:380px;
+
+    background:white;
+
+    padding:25px;
+
+    border-radius:20px;
+
+    box-shadow:
+
+    0 15px 40px rgba(0,0,0,.2);
+
+    z-index:100;
+
+}
+
+
+
+.close-popup{
+
+    position:absolute;
+
+    right:15px;
+
+    top:10px;
+
+}
+
+
+
+
+
+@media(max-width:768px){
+
+
+.learning-reading-page{
+
+    padding:0 16px;
+
+    margin:20px auto;
+
+}
+
+
+.sentence-card{
+
+    padding:20px;
+
+}
+
+
+.sentence-original{
+
+    font-size:20px;
+    line-height:1.9;
+
+    overflow-wrap:anywhere;
+
+}
+
+
+.sentence-translation{
+
+    font-size:16px;
+
+}
+
+
+}

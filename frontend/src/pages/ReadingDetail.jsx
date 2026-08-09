@@ -13,6 +13,8 @@ import api from "../api/axios";
 
 
 
+
+
 function ReadingDetail(){
 
 
@@ -30,61 +32,7 @@ function ReadingDetail(){
 
 
 
-    const [isMobile,setIsMobile] = useState(
-        window.innerWidth <= 768
-    );
-
-
-
-
-
-
-
-
-
-    useEffect(()=>{
-
-
-        function resize(){
-
-
-            setIsMobile(
-
-                window.innerWidth <= 768
-
-            );
-
-
-        }
-
-
-
-        window.addEventListener(
-
-            "resize",
-
-            resize
-
-        );
-
-
-
-        return ()=>{
-
-
-            window.removeEventListener(
-
-                "resize",
-
-                resize
-
-            );
-
-
-        };
-
-
-    },[]);
+    const [currentSentence,setCurrentSentence] = useState(0);
 
 
 
@@ -107,13 +55,11 @@ function ReadingDetail(){
             );
 
 
-
             setData(
 
                 res.data
 
             );
-
 
 
             return res.data.status;
@@ -123,15 +69,10 @@ function ReadingDetail(){
         }catch(error){
 
 
-            console.error(
-
-                error
-
-            );
+            console.error(error);
 
 
             return null;
-
 
         }
 
@@ -156,7 +97,8 @@ function ReadingDetail(){
         const timer = setInterval(async()=>{
 
 
-            const status = await loadReading();
+            const status =
+                await loadReading();
 
 
 
@@ -232,12 +174,12 @@ function ReadingDetail(){
 
 
 
+
             const res = await api.get(
 
                 `/dictionary/${cleanWord}?language=${data.source_language}`
 
             );
-
 
 
 
@@ -249,15 +191,10 @@ function ReadingDetail(){
 
 
 
-
         }catch(error){
 
 
-            console.error(
-
-                error
-
-            );
+            console.error(error);
 
 
             setWordInfo(null);
@@ -281,11 +218,10 @@ function ReadingDetail(){
 
         if(!wordInfo?.data){
 
-
             return;
 
-
         }
+
 
 
 
@@ -317,11 +253,7 @@ function ReadingDetail(){
 
                     translation:
 
-                        wordInfo.data.translations?.en
-
-                        ||
-
-                        "",
+                        wordInfo.data.translations?.en || "",
 
 
                     cefr:
@@ -341,13 +273,14 @@ function ReadingDetail(){
 
                 }
 
+
             );
 
 
 
             alert(
 
-                "Added!"
+                "Added to vocabulary"
 
             );
 
@@ -356,18 +289,8 @@ function ReadingDetail(){
         }catch(error){
 
 
-            console.error(
+            console.error(error);
 
-                error
-
-            );
-
-
-            alert(
-
-                "Failed to add vocabulary"
-
-            );
 
 
         }
@@ -396,7 +319,6 @@ function ReadingDetail(){
 
         );
 
-
     }
 
 
@@ -407,7 +329,7 @@ function ReadingDetail(){
 
 
 
-    if(data.status === "processing"){
+    if(data.status==="processing"){
 
 
         return (
@@ -422,7 +344,6 @@ function ReadingDetail(){
                 </h1>
 
 
-
                 <p>
 
                     AI is preparing your reading material.
@@ -431,7 +352,6 @@ function ReadingDetail(){
 
 
             </div>
-
 
         );
 
@@ -446,13 +366,82 @@ function ReadingDetail(){
 
 
 
+    const sentences =
+
+        data.sentences || [];
+
+
+
+
+    const sentence =
+
+        sentences[currentSentence];
+
+
+
+
+
+
+
+
+
+    if(!sentence){
+
+
+        return (
+
+            <div className="loading-page">
+
+                No sentence available.
+
+            </div>
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+
+    const progress =
+
+        Math.round(
+
+            (
+
+                (currentSentence + 1)
+
+                /
+
+                sentences.length
+
+            )
+
+            *
+
+            100
+
+        );
+
+
+
+
+
+
+
+
+
     return (
 
-        <div
 
-        className="reading-layout"
 
-        >
+        <div className="learning-reading-page">
 
 
 
@@ -460,54 +449,35 @@ function ReadingDetail(){
 
 
 
+            <h1>
 
-            {/* Article */}
+                {data.title}
 
-
-
-            <main
-
-            style={{
-
-                flex:1,
-
-                minWidth:0,
-
-                overflowWrap:"break-word"
-
-            }}
-
-            >
-
-
-
-
-                <h1>
-
-                    {data.title || "Reading"}
-
-                </h1>
+            </h1>
 
 
 
 
 
-                <p>
+            <p className="subtitle">
 
 
-                    Difficulty:
+                {data.difficulty}
 
-                    {" "}
+                {" · "}
+
+                Sentence
+
+                {" "}
+
+                {currentSentence + 1}
+
+                /
+
+                {sentences.length}
 
 
-                    <b>
-
-                        {data.difficulty}
-
-                    </b>
-
-
-                </p>
+            </p>
 
 
 
@@ -515,14 +485,62 @@ function ReadingDetail(){
 
 
 
+
+
+            {/* Progress */}
+
+
+
+            <div className="progress-container">
+
+
+                <div
+
+                className="progress-bar"
+
+
+                style={{
+
+                    width:`${progress}%`
+
+                }}
+
+                >
+
+                </div>
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            {/* Sentence Card */}
+
+
+
+            <div className="sentence-card">
+
+
+
+
+
+
+
+                <div className="sentence-original">
 
 
                 {
 
 
-                data.sentences &&
+                sentence.words &&
 
-                data.sentences.length > 0
+                sentence.words.length > 0
 
 
 
@@ -530,271 +548,49 @@ function ReadingDetail(){
 
 
 
-                data.sentences.map(
+                sentence.words.map(
 
-                    sentence=>(
-
-
-                    <section
-
-                    key={sentence.id}
+                    word=>(
 
 
-                    style={{
+                    <span
 
-                        marginBottom:"35px"
 
-                    }}
+                    key={word.id}
 
-                    >
 
+                    onClick={()=>handleWordClick(
+
+                        word.word
+
+                    )}
 
 
 
+                    className={
 
-                        {/* Original */}
+                        selectedWord ===
 
-
-
-                        <div
-
-                        style={{
-
-                            fontSize:
-
-                            isMobile
-
-                            ?
-
-                            "16px"
-
-                            :
-
-                            "18px",
-
-
-                            lineHeight:"2",
-
-
-                            display:"flex",
-
-
-                            flexWrap:"wrap",
-
-
-                            gap:"6px"
-
-
-                        }}
-
-                        >
-
-
-
-
-
-                        {
-
-
-                        sentence.words &&
-
-                        sentence.words.length > 0
-
-
+                        word.word.toLowerCase()
 
                         ?
 
-
-
-                        sentence.words.map(
-
-                            word=>{
-
-
-                            const normalizedWord =
-
-
-                                word.word
-
-                                .replace(
-
-                                    /[.,!?;:"'()]/g,
-
-                                    ""
-
-                                )
-
-                                .toLowerCase();
-
-
-
-
-                            return (
-
-
-
-                            <span
-
-
-                            key={word.id}
-
-
-
-                            onClick={()=>
-
-
-                                handleWordClick(
-
-                                    word.word
-
-                                )
-
-                            }
-
-
-
-                            style={{
-
-
-                                cursor:"pointer",
-
-
-                                padding:"3px 5px",
-
-
-                                borderRadius:"5px",
-
-
-                                background:
-
-
-                                selectedWord === normalizedWord
-
-
-                                ?
-
-
-                                "#fff3cd"
-
-
-                                :
-
-
-                                "transparent"
-
-
-
-                            }}
-
-
-                            >
-
-
-
-                                {word.word}
-
-
-
-                            </span>
-
-
-                            );
-
-
-                            }
-
-
-                        )
-
-
+                        "word selected"
 
                         :
 
+                        "word"
 
-
-                        <span>
-
-                            {sentence.original}
-
-                        </span>
+                    }
 
 
 
-                        }
+                    >
+
+                        {word.word}
 
 
-
-
-
-                        </div>
-
-
-
-
-
-
-
-
-
-                        {/* Translation */}
-
-
-
-                        <p
-
-                        style={{
-
-
-                            marginTop:"12px",
-
-
-                            color:"#64748b",
-
-
-                            lineHeight:"1.8",
-
-
-                            fontSize:
-
-                            isMobile
-
-                            ?
-
-                            "14px"
-
-                            :
-
-                            "16px"
-
-
-                        }}
-
-                        >
-
-
-                            {
-
-
-                            sentence.translation
-
-
-                            ||
-
-
-                            "Generating translation..."
-
-
-                            }
-
-
-
-                        </p>
-
-
-
-
-
-                    </section>
+                    </span>
 
 
                     )
@@ -807,12 +603,7 @@ function ReadingDetail(){
                 :
 
 
-
-                <p>
-
-                    No sentences available.
-
-                </p>
+                sentence.original
 
 
 
@@ -820,9 +611,7 @@ function ReadingDetail(){
 
 
 
-
-
-            </main>
+                </div>
 
 
 
@@ -832,7 +621,125 @@ function ReadingDetail(){
 
 
 
-            {/* Dictionary */}
+                <div className="sentence-translation">
+
+
+                    {
+
+
+                    sentence.translation
+
+                    ||
+
+                    "Generating translation..."
+
+
+                    }
+
+
+                </div>
+
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            {/* Navigation */}
+
+
+
+            <div className="sentence-navigation">
+
+
+
+                <button
+
+
+                disabled={currentSentence===0}
+
+
+
+                onClick={()=>
+
+
+                    setCurrentSentence(
+
+                        currentSentence-1
+
+                    )
+
+
+                }
+
+
+                >
+
+                    ← Previous
+
+                </button>
+
+
+
+
+
+
+                <button
+
+
+                disabled={
+
+                    currentSentence ===
+
+                    sentences.length-1
+
+                }
+
+
+
+                onClick={()=>
+
+
+                    setCurrentSentence(
+
+                        currentSentence+1
+
+                    )
+
+
+                }
+
+
+                >
+
+                    Next →
+
+                </button>
+
+
+
+
+
+            </div>
+
+
+
+
+
+
+
+
+
+            {/* Word popup */}
 
 
 
@@ -843,11 +750,22 @@ function ReadingDetail(){
 
 
 
-            <aside
+            <div className="word-popup">
 
-            className="dictionary-panel"
 
-            >
+
+                <button
+
+                className="close-popup"
+
+                onClick={()=>setWordInfo(null)}
+
+                >
+
+                    ×
+
+                </button>
+
 
 
 
@@ -878,7 +796,6 @@ function ReadingDetail(){
                 <>
 
 
-
                 <p>
 
                     <b>
@@ -887,12 +804,9 @@ function ReadingDetail(){
 
                     </b>
 
-
                     {" "}
 
-
                     {wordInfo.data.lemma}
-
 
                 </p>
 
@@ -908,12 +822,9 @@ function ReadingDetail(){
 
                     </b>
 
-
                     {" "}
 
-
                     {wordInfo.data.pos}
-
 
                 </p>
 
@@ -929,13 +840,10 @@ function ReadingDetail(){
 
                     </b>
 
-
                     {" "}
-
 
                     {wordInfo.data.cefr}
 
-
                 </p>
 
 
@@ -943,20 +851,9 @@ function ReadingDetail(){
 
 
                 <p>
-
-                    <b>
-
-                        Definition:
-
-                    </b>
-
-
-                    {" "}
-
 
                     {wordInfo.data.definition}
 
-
                 </p>
 
 
@@ -965,18 +862,7 @@ function ReadingDetail(){
 
                 <p>
 
-                    <b>
-
-                        Translation:
-
-                    </b>
-
-
-                    {" "}
-
-
                     {
-
 
                     wordInfo.data.translations?.en
 
@@ -984,9 +870,7 @@ function ReadingDetail(){
 
                     "-"
 
-
                     }
-
 
                 </p>
 
@@ -1001,15 +885,15 @@ function ReadingDetail(){
 
                 >
 
-                    Add Vocabulary
+                    + Add Vocabulary
 
                 </button>
 
 
 
-
-
                 </>
+
+
 
 
 
@@ -1030,12 +914,10 @@ function ReadingDetail(){
 
 
 
-            </aside>
-
+            </div>
 
 
             }
-
 
 
 
