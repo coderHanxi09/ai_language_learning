@@ -24,6 +24,14 @@ import Writing from "./pages/Writing";
 
 
 
+import {
+    LanguageProvider
+} from "./context/LanguageContext";
+
+
+
+
+
 
 
 function App(){
@@ -32,126 +40,132 @@ function App(){
     return (
 
 
-        <BrowserRouter>
+        <LanguageProvider>
 
 
-            <Navbar />
+            <BrowserRouter>
 
 
+                <Navbar />
 
-            <Routes>
 
 
+                <Routes>
 
-                <Route
 
-                path="/"
 
-                element={
-                    <ReadingList />
-                }
+                    <Route
 
-                />
+                    path="/"
 
+                    element={
+                        <ReadingList />
+                    }
 
+                    />
 
 
-                <Route
 
-                path="/readings"
 
-                element={
-                    <ReadingList />
-                }
+                    <Route
 
-                />
+                    path="/readings"
 
+                    element={
+                        <ReadingList />
+                    }
 
+                    />
 
 
 
-                <Route
 
-                path="/create"
 
-                element={
-                    <CreateReading />
-                }
+                    <Route
 
-                />
+                    path="/create"
 
+                    element={
+                        <CreateReading />
+                    }
 
+                    />
 
 
 
 
-                <Route
 
-                path="/readings/:id"
 
-                element={
-                    <ReadingDetail />
-                }
+                    <Route
 
-                />
+                    path="/readings/:id"
 
+                    element={
+                        <ReadingDetail />
+                    }
 
+                    />
 
 
 
 
 
-                <Route
 
-                path="/vocabulary"
 
-                element={
-                    <Vocabulary />
-                }
+                    <Route
 
-                />
+                    path="/vocabulary"
 
+                    element={
+                        <Vocabulary />
+                    }
 
+                    />
 
 
 
 
 
-                <Route
 
-                path="/flashcards"
 
-                element={
-                    <Flashcards />
-                }
+                    <Route
 
-                />
+                    path="/flashcards"
 
+                    element={
+                        <Flashcards />
+                    }
 
+                    />
 
 
 
 
 
-                <Route
 
-                path="/writing"
 
-                element={
-                    <Writing />
-                }
+                    <Route
 
-                />
+                    path="/writing"
 
+                    element={
+                        <Writing />
+                    }
 
+                    />
 
 
 
-            </Routes>
 
 
+                </Routes>
 
-        </BrowserRouter>
+
+
+            </BrowserRouter>
+
+
+        </LanguageProvider>
 
 
     );

@@ -25,7 +25,6 @@ router = APIRouter()
 # Request Models
 # =====================================================
 
-
 class FlashcardUpdateRequest(BaseModel):
 
     status: str
@@ -45,6 +44,10 @@ def get_flashcards(
 
     set_number: int = Query(
         default=1
+    ),
+
+    language: str = Query(
+        default="de"
     )
 
 ):
@@ -61,12 +64,23 @@ def get_flashcards(
 
             FlashcardDB
 
+        ).join(
+
+            FlashcardDB.vocabulary
+
         ).filter(
 
 
             FlashcardDB.set_number
             ==
-            set_number
+            set_number,
+
+
+            FlashcardDB.vocabulary.has(
+
+                source_language=language
+
+            )
 
 
         ).order_by(
@@ -107,7 +121,11 @@ def get_flashcards(
 
 
                 "vocabulary_id":
-                    card.vocabulary_id
+                    card.vocabulary_id,
+
+
+                "source_language":
+                    card.vocabulary.source_language
 
 
             }
@@ -132,11 +150,17 @@ def get_flashcards(
 
 
 # =====================================================
-# GET flashcard sets
+# GET /flashcards/sets
 # =====================================================
 
 @router.get("/sets")
-def get_flashcard_sets():
+def get_flashcard_sets(
+
+    language: str = Query(
+        default="de"
+    )
+
+):
 
 
     session = SessionLocal()
@@ -149,6 +173,18 @@ def get_flashcard_sets():
         result = session.query(
 
             FlashcardDB.set_number
+
+        ).join(
+
+            FlashcardDB.vocabulary
+
+        ).filter(
+
+            FlashcardDB.vocabulary.has(
+
+                source_language=language
+
+            )
 
         ).distinct().order_by(
 

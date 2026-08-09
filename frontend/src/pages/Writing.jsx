@@ -22,7 +22,17 @@ function Writing(){
 
 
 
-    const [language,setLanguage] = useState("de");
+
+    const [language,setLanguage] = useState(
+
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de"
+
+    );
+
 
 
     const [level,setLevel] = useState("B2");
@@ -39,6 +49,74 @@ function Writing(){
 
 
 
+
+
+    // sync Navbar language change
+
+    useEffect(()=>{
+
+
+        function syncLanguage(){
+
+
+            setLanguage(
+
+                localStorage.getItem(
+
+                    "learningLanguage"
+
+                )
+                ||
+                "de"
+
+            );
+
+
+        }
+
+
+
+
+
+
+        window.addEventListener(
+
+            "languageChange",
+
+            syncLanguage
+
+        );
+
+
+
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "languageChange",
+
+                syncLanguage
+
+            );
+
+
+        };
+
+
+    },[]);
+
+
+
+
+
+
+
+
+
     async function loadVocabularyCount(){
 
 
@@ -46,12 +124,35 @@ function Writing(){
 
 
             const res = await api.get(
+
                 "/vocabulary"
+
             );
 
 
+
+
+            const filtered =
+
+                res.data.filter(
+
+                    item =>
+
+                    item.source_language
+
+                    ===
+
+                    language
+
+                );
+
+
+
+
             setVocabularyCount(
-                res.data.length
+
+                filtered.length
+
             );
 
 
@@ -60,7 +161,9 @@ function Writing(){
 
 
             console.error(
+
                 error
+
             );
 
 
@@ -75,13 +178,16 @@ function Writing(){
 
 
 
+
+
     useEffect(()=>{
 
 
         loadVocabularyCount();
 
 
-    },[]);
+
+    },[language]);
 
 
 
@@ -101,19 +207,15 @@ function Writing(){
 
 
 
-
             const res = await api.post(
 
                 "/writing/generate",
 
                 {
 
-
                     language,
 
-
                     level
-
 
                 }
 
@@ -124,9 +226,7 @@ function Writing(){
 
 
 
-            if(
-                res.data.id
-            ){
+            if(res.data.id){
 
 
                 navigate(
@@ -144,13 +244,19 @@ function Writing(){
 
 
             console.error(
+
                 error
+
             );
+
 
 
             alert(
+
                 "Failed to generate article"
+
             );
+
 
 
             setLoading(false);
@@ -188,6 +294,7 @@ function Writing(){
 
 
 
+
             <h1>
 
                 AI Writing
@@ -214,6 +321,7 @@ function Writing(){
                 based on your vocabulary.
 
             </p>
+
 
 
 
@@ -250,7 +358,9 @@ function Writing(){
                 </b>
 
 
+
                 <br />
+
 
 
                 Words used:
@@ -259,10 +369,17 @@ function Writing(){
 
                 <b>
 
-                    {Math.min(
+                    {
+
+                    Math.min(
+
                         50,
+
                         vocabularyCount
-                    )}
+
+                    )
+
+                    }
 
                 </b>
 
@@ -285,15 +402,23 @@ function Writing(){
 
 
 
+
             <select
+
 
             value={language}
 
+
             onChange={
+
                 e=>setLanguage(
+
                     e.target.value
+
                 )
+
             }
+
 
 
             style={{
@@ -341,15 +466,25 @@ function Writing(){
 
 
 
+
+
+
             <select
+
 
             value={level}
 
+
             onChange={
+
                 e=>setLevel(
+
                     e.target.value
+
                 )
+
             }
+
 
 
             style={{
@@ -412,6 +547,7 @@ function Writing(){
             disabled={loading}
 
 
+
             style={{
 
                 width:"100%",
@@ -453,6 +589,7 @@ function Writing(){
 
 
             </button>
+
 
 
 

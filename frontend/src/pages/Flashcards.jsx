@@ -30,6 +30,21 @@ function Flashcards(){
 
 
 
+    const [language,setLanguage] = useState(
+
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de"
+
+    );
+
+
+
+
+
+
 
 
 
@@ -39,23 +54,24 @@ function Flashcards(){
         try{
 
 
-            const res =
-                await api.get(
-                    "/flashcards/sets"
-                );
+            const res = await api.get(
+
+                `/flashcards/sets?language=${language}`
+
+            );
 
 
             setSets(
+
                 res.data
+
             );
 
 
         }catch(error){
 
 
-            console.error(
-                error
-            );
+            console.error(error);
 
 
         }
@@ -70,8 +86,11 @@ function Flashcards(){
 
 
 
+
     async function loadCards(
+
         setNumber
+
     ){
 
 
@@ -82,18 +101,20 @@ function Flashcards(){
 
 
 
-            const res =
-                await api.get(
+            const res = await api.get(
 
-                    `/flashcards?set_number=${setNumber}`
+                `/flashcards?set_number=${setNumber}&language=${language}`
 
-                );
+            );
 
 
 
             setCards(
+
                 res.data
+
             );
+
 
 
             setCurrentIndex(0);
@@ -103,9 +124,7 @@ function Flashcards(){
         }catch(error){
 
 
-            console.error(
-                error
-            );
+            console.error(error);
 
 
         }finally{
@@ -126,6 +145,7 @@ function Flashcards(){
 
 
 
+
     useEffect(()=>{
 
 
@@ -133,8 +153,84 @@ function Flashcards(){
 
 
         loadCards(
+
             currentSet
+
         );
+
+
+    },[language]);
+
+
+
+
+
+
+
+
+
+    useEffect(()=>{
+
+
+        function handleLanguageChange(){
+
+
+            const newLanguage =
+
+                localStorage.getItem(
+
+                    "learningLanguage"
+
+                )
+                ||
+                "de";
+
+
+
+            setLanguage(
+
+                newLanguage
+
+            );
+
+
+
+            setCurrentSet(1);
+
+
+
+        }
+
+
+
+
+
+
+        window.addEventListener(
+
+            "languageChange",
+
+            handleLanguageChange
+
+        );
+
+
+
+
+
+        return ()=>{
+
+
+            window.removeEventListener(
+
+                "languageChange",
+
+                handleLanguageChange
+
+            );
+
+
+        };
 
 
     },[]);
@@ -148,11 +244,14 @@ function Flashcards(){
 
 
     async function updateStatus(
+
         status
+
     ){
 
 
         const card =
+
             cards[currentIndex];
 
 
@@ -162,6 +261,7 @@ function Flashcards(){
             return;
 
         }
+
 
 
 
@@ -190,9 +290,7 @@ function Flashcards(){
         }catch(error){
 
 
-            console.error(
-                error
-            );
+            console.error(error);
 
 
         }
@@ -216,8 +314,11 @@ function Flashcards(){
 
 
         if(
+
             currentIndex <
+
             cards.length - 1
+
         ){
 
 
@@ -234,7 +335,9 @@ function Flashcards(){
 
 
             alert(
+
                 "Set completed!"
+
             );
 
 
@@ -251,18 +354,20 @@ function Flashcards(){
 
 
 
-    function changeSet(
-        number
-    ){
+    function changeSet(number){
 
 
         setCurrentSet(
+
             number
+
         );
 
 
         loadCards(
+
             number
+
         );
 
 
@@ -282,9 +387,13 @@ function Flashcards(){
         return (
 
             <div
+
             style={{
+
                 padding:"40px"
+
             }}
+
             >
 
                 Loading flashcards...
@@ -309,23 +418,33 @@ function Flashcards(){
         return (
 
             <div
+
             style={{
+
                 padding:"40px"
+
             }}
+
             >
 
 
                 <h1>
+
                     🎴 Flashcards
+
                 </h1>
 
 
+
                 <p>
+
                     No flashcards available.
+
                 </p>
 
 
             </div>
+
 
         );
 
@@ -339,7 +458,9 @@ function Flashcards(){
 
 
     const card =
+
         cards[currentIndex];
+
 
 
 
@@ -369,76 +490,103 @@ function Flashcards(){
 
 
             <h1>
+
                 🎴 Flashcards
+
             </h1>
 
 
 
 
 
-
-            <div
+            <p
 
             style={{
 
-                marginBottom:"20px"
+                color:"#666"
 
             }}
 
             >
 
-
                 {
-                    sets.map(
 
-                        s=>(
+                    language==="de"
 
+                    ?
 
-                        <button
+                    "🇩🇪 German"
 
-                        key={
-                            s.set_number
-                        }
+                    :
 
+                    "🇬🇧 English"
 
-                        onClick={()=>{
-
-                            changeSet(
-                                s.set_number
-                            );
-
-                        }}
-
-
-                        style={{
-
-                            margin:"5px",
-
-                            padding:"8px 15px",
-
-                            borderRadius:"8px",
-
-                            cursor:"pointer"
-
-                        }}
-
-                        >
-
-                            Set {
-                                s.set_number
-                            }
-
-
-                        </button>
-
-
-                        )
-
-                    )
                 }
 
 
+            </p>
+
+
+
+
+
+
+
+            <div>
+
+            {
+
+                sets.map(
+
+                    s=>(
+
+
+                    <button
+
+                    key={
+
+                        s.set_number
+
+                    }
+
+
+                    onClick={()=>changeSet(
+
+                        s.set_number
+
+                    )}
+
+
+                    style={{
+
+                        margin:"5px",
+
+                        padding:"8px 15px",
+
+                        borderRadius:"8px",
+
+                        cursor:"pointer"
+
+                    }}
+
+                    >
+
+                        Set {s.set_number}
+
+                    </button>
+
+
+                    )
+
+
+                )
+
+            }
+
+
             </div>
+
+
 
 
 
@@ -450,25 +598,13 @@ function Flashcards(){
 
                 Set {currentSet}
 
-                {" "}
+                {" | "}
 
-                |
-
-                {" "}
-
-                {
-
-                    currentIndex + 1
-
-                }
+                {currentIndex + 1}
 
                 /
 
-                {
-
-                    cards.length
-
-                }
+                {cards.length}
 
 
             </h3>
@@ -483,13 +619,11 @@ function Flashcards(){
 
             <div
 
-            onClick={()=>{
+            onClick={()=>setShowBack(
 
-                setShowBack(
-                    !showBack
-                );
+                !showBack
 
-            }}
+            )}
 
 
             style={{
@@ -515,7 +649,8 @@ function Flashcards(){
                 background:"#fff",
 
                 boxShadow:
-                    "0 4px 15px rgba(0,0,0,0.1)",
+
+                "0 4px 15px rgba(0,0,0,0.1)",
 
                 whiteSpace:"pre-line"
 
@@ -547,10 +682,16 @@ function Flashcards(){
 
 
 
+
+
             <p
+
             style={{
+
                 color:"#777"
+
             }}
+
             >
 
                 Click card to flip
@@ -582,16 +723,13 @@ function Flashcards(){
             >
 
 
-
                 <button
 
-                onClick={()=>{
+                onClick={()=>updateStatus(
 
-                    updateStatus(
-                        "learning"
-                    );
+                    "learning"
 
-                }}
+                )}
 
                 >
 
@@ -602,16 +740,13 @@ function Flashcards(){
 
 
 
-
                 <button
 
-                onClick={()=>{
+                onClick={()=>updateStatus(
 
-                    updateStatus(
-                        "mastered"
-                    );
+                    "mastered"
 
-                }}
+                )}
 
                 >
 
@@ -620,12 +755,7 @@ function Flashcards(){
                 </button>
 
 
-
             </div>
-
-
-
-
 
 
 

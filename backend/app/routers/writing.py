@@ -53,7 +53,15 @@ class WritingRequest(BaseModel):
 # =====================================================
 
 
-def generate_article(words):
+def generate_article(
+
+    words,
+
+    language,
+
+    level
+
+):
 
 
     provider = get_ai_provider()
@@ -74,14 +82,33 @@ def generate_article(words):
 
 
 
+
+
+    language_name = (
+
+        "German"
+
+        if language == "de"
+
+        else
+
+        "English"
+
+    )
+
+
+
+
+
+
     prompt = f"""
 
-Write a German language learning article.
+Write a {language_name} language learning article.
 
 Requirements:
 
-- Language: German
-- Level: B2
+- Language: {language_name}
+- Level: {level}
 - Length: around 400 words
 - Use all vocabulary words naturally.
 - The article must be coherent.
@@ -98,9 +125,14 @@ Vocabulary words:
 
 
 
+
+
     result = provider.generate(
+
         prompt
+
     )
+
 
 
     return result.strip()
@@ -134,36 +166,66 @@ def save_reading(
     try:
 
 
+
+        translation_language = (
+
+            "en"
+
+            if language == "de"
+
+            else
+
+            "de"
+
+        )
+
+
+
+
+
         reading = ReadingDB(
+
 
             title="AI Generated Reading",
 
+
             content=content,
+
 
             source_language=language,
 
-            translation_language="en",
+
+            translation_language=translation_language,
+
 
             difficulty=level,
 
+
             vocabulary="[]",
 
+
             status="processing"
+
 
         )
 
 
 
         session.add(
+
             reading
+
         )
 
 
         session.commit()
 
 
+
         session.refresh(
+
             reading
+
         )
 
 
@@ -204,11 +266,22 @@ def generate_writing(
     try:
 
 
+
         vocabulary = (
 
             session.query(
 
                 VocabularyDB
+
+            )
+
+            .filter(
+
+                VocabularyDB.source_language
+
+                ==
+
+                req.language
 
             )
 
@@ -224,16 +297,21 @@ def generate_writing(
 
 
 
+
+
         if not vocabulary:
+
 
 
             raise HTTPException(
 
                 status_code=400,
 
-                detail="No vocabulary found"
+                detail="No vocabulary found for this language"
 
             )
+
+
 
 
 
@@ -265,7 +343,6 @@ def generate_writing(
 
 
 
-
     # =========================
     # AI Generation
     # =========================
@@ -274,14 +351,21 @@ def generate_writing(
     try:
 
 
+
         article = generate_article(
 
-            selected_words
+            selected_words,
+
+            req.language,
+
+            req.level
 
         )
 
 
+
     except Exception as e:
+
 
 
         raise HTTPException(
@@ -319,12 +403,24 @@ def generate_writing(
 
 
 
-    # =========================
-    # Process Reading
-    # sentence
-    # translation
-    # tokenization
-    # =========================
+
+    translation_language = (
+
+        "en"
+
+        if req.language == "de"
+
+        else
+
+        "de"
+
+    )
+
+
+
+
+
+
 
 
     background_tasks.add_task(
@@ -335,13 +431,18 @@ def generate_writing(
 
         {
 
+
             "content": article,
+
 
             "source_language": req.language,
 
-            "translation_language": "en",
+
+            "translation_language": translation_language,
+
 
             "difficulty": req.level
+
 
         }
 

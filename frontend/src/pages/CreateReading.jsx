@@ -24,6 +24,33 @@ function CreateReading(){
 
 
 
+    const language =
+
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de";
+
+
+
+    const translationLanguage =
+
+        language === "de"
+
+        ?
+
+        "en"
+
+        :
+
+        "de";
+
+
+
+
+
+
 
 
     async function handleSubmit(){
@@ -59,10 +86,10 @@ function CreateReading(){
                     content:content,
 
 
-                    source_language:"de",
+                    source_language:language,
 
 
-                    translation_language:"en",
+                    translation_language:translationLanguage,
 
 
                     difficulty:"B2"
@@ -74,10 +101,15 @@ function CreateReading(){
 
 
 
+
             console.log(
+
                 "CREATE READING:",
+
                 res.data
+
             );
+
 
 
 
@@ -139,14 +171,35 @@ function CreateReading(){
 
                 }}
 
-                placeholder="Paste your German article here..."
+
+                placeholder={
+
+                    language === "de"
+
+                    ?
+
+                    "Paste your German article here..."
+
+                    :
+
+                    "Paste your English article here..."
+
+                }
+
 
                 value={content}
 
+
                 onChange={
-                    e=>setContent(
+
+                    e=>
+
+                    setContent(
+
                         e.target.value
+
                     )
+
                 }
 
 

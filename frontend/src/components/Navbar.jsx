@@ -1,33 +1,163 @@
 import {
-    NavLink
+    Link,
+    useLocation
 } from "react-router-dom";
+
+
+import {
+    useState
+} from "react";
+
+
+
 
 
 function Navbar(){
 
 
-    const linkStyle = ({isActive}) => ({
+    const location = useLocation();
+
+
+
+    const [language,setLanguage] = useState(
+
+        localStorage.getItem(
+            "learningLanguage"
+        )
+        ||
+        "de"
+
+    );
+
+
+
+
+
+
+
+    function changeLanguage(){
+
+
+        const newLanguage =
+
+            language === "de"
+
+            ?
+
+            "en"
+
+            :
+
+            "de";
+
+
+
+        localStorage.setItem(
+
+            "learningLanguage",
+
+            newLanguage
+
+        );
+
+
+
+        setLanguage(
+
+            newLanguage
+
+        );
+
+
+
+
+        // notify all pages
+
+        window.dispatchEvent(
+
+            new Event(
+                "languageChange"
+            )
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+    function active(path){
+
+
+        return (
+
+            location.pathname === path
+
+        );
+
+
+    }
+
+
+
+
+
+
+
+
+    const linkStyle = (path)=>({
 
 
         textDecoration:"none",
 
 
+        padding:"8px 14px",
+
+
+        borderRadius:"10px",
+
+
+        fontSize:"15px",
+
+
+        fontWeight:"500",
+
+
+        transition:"all 0.2s ease",
+
+
         color:
-            isActive
-            ? "#2563eb"
-            : "#333",
 
 
-        fontWeight:
-            isActive
-            ? "700"
-            : "500",
+            active(path)
+
+            ?
+
+            "#2563eb"
+
+            :
+
+            "#374151",
 
 
-        padding:"8px 12px",
 
 
-        borderRadius:"6px"
+        background:
+
+
+            active(path)
+
+            ?
+
+            "#eff6ff"
+
+            :
+
+            "transparent"
 
 
     });
@@ -36,160 +166,366 @@ function Navbar(){
 
 
 
+
+
+
+
     return (
+
 
 
         <nav
 
+
         style={{
 
-            display:"flex",
 
-            alignItems:"center",
-
-            justifyContent:"space-between",
-
-            padding:"15px 30px",
-
-            borderBottom:
-                "1px solid #ddd",
-
-            background:"#fff",
 
             position:"sticky",
 
+
             top:0,
 
-            zIndex:1000
+
+            zIndex:100,
+
+
+
+            display:"flex",
+
+
+            alignItems:"center",
+
+
+            gap:"10px",
+
+
+
+            padding:"16px 40px",
+
+
+
+            background:"#ffffff",
+
+
+
+            borderBottom:
+
+            "1px solid #e5e7eb",
+
+
+
+            boxShadow:
+
+            "0 2px 12px rgba(0,0,0,0.05)"
+
 
 
         }}
+
+
 
         >
 
 
 
-            {/* Logo */}
-
-            <div>
-
-
-                <NavLink
-
-                to="/"
-
-                style={{
-
-                    textDecoration:"none",
-
-                    color:"#111",
-
-                    fontSize:"22px",
-
-                    fontWeight:"700"
-
-                }}
-
-                >
-
-                    AI Language Learning
-
-                </NavLink>
-
-
-            </div>
 
 
 
 
 
 
+            <Link
 
-            {/* Navigation */}
+
+            to="/readings"
+
+
+            style={{
+
+
+                textDecoration:"none",
+
+
+                fontSize:"20px",
+
+
+                fontWeight:"700",
+
+
+                color:"#111827",
+
+
+                marginRight:"25px",
+
+
+                whiteSpace:"nowrap"
+
+
+            }}
+
+
+            >
+
+                AI Learning
+
+
+            </Link>
+
+
+
+
+
+
+
+
+
+            <Link
+
+
+            to="/readings"
+
+
+            style={
+
+                linkStyle(
+                    "/readings"
+                )
+
+            }
+
+
+            >
+
+                Readings
+
+
+            </Link>
+
+
+
+
+
+
+
+
+
+            <Link
+
+
+            to="/writing"
+
+
+            style={
+
+                linkStyle(
+                    "/writing"
+                )
+
+            }
+
+
+            >
+
+                AI Writing
+
+
+            </Link>
+
+
+
+
+
+
+
+
+
+            <Link
+
+
+            to="/vocabulary"
+
+
+            style={
+
+                linkStyle(
+                    "/vocabulary"
+                )
+
+            }
+
+
+            >
+
+                Vocabulary
+
+
+            </Link>
+
+
+
+
+
+
+
+
+
+            <Link
+
+
+            to="/flashcards"
+
+
+            style={
+
+                linkStyle(
+                    "/flashcards"
+                )
+
+            }
+
+
+            >
+
+                Flashcards
+
+
+            </Link>
+
+
+
+
+
+
+
 
 
             <div
 
+
             style={{
 
-                display:"flex",
 
-                gap:"10px"
+                marginLeft:"auto"
+
 
             }}
+
 
             >
 
 
 
-                <NavLink
 
-                to="/readings"
 
-                style={linkStyle}
+                <button
+
+
+                onClick={changeLanguage}
+
+
+
+                style={{
+
+
+
+                    border:"none",
+
+
+
+                    background:"#f3f4f6",
+
+
+
+                    padding:"10px 16px",
+
+
+
+                    borderRadius:"12px",
+
+
+
+                    cursor:"pointer",
+
+
+
+                    fontSize:"15px",
+
+
+
+                    fontWeight:"600",
+
+
+
+                    transition:"all 0.2s ease"
+
+
+
+                }}
+
+
 
                 >
 
-                    📖 Readings
-
-                </NavLink>
 
 
 
 
-
-                <NavLink
-
-                to="/vocabulary"
-
-                style={linkStyle}
-
-                >
-
-                    📝 Vocabulary
-
-                </NavLink>
+                    {
 
 
+                        language === "de"
+
+
+                        ?
+
+
+                        "🇩🇪 German"
+
+
+                        :
+
+
+                        "🇬🇧 English"
 
 
 
-
-                <NavLink
-
-                to="/flashcards"
-
-                style={linkStyle}
-
-                >
-
-                    🎴 Flashcards
-
-                </NavLink>
+                    }
 
 
 
 
 
+                    <span
 
 
-                <NavLink
+                    style={{
 
-                to="/writing"
 
-                style={linkStyle}
+                        marginLeft:"8px"
 
-                >
 
-                    ✨ AI Writing
+                    }}
 
-                </NavLink>
+
+                    >
+
+                        ⇄
+
+                    </span>
+
+
+
+                </button>
 
 
 
 
 
             </div>
+
+
+
 
 
 
@@ -201,6 +537,7 @@ function Navbar(){
 
 
 }
+
 
 
 export default Navbar;
